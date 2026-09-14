@@ -83,7 +83,7 @@ The controller is the central component that runs as a Kubernetes Deployment. It
 
 ### Custom Resource Definitions (`api/v1alpha1/`)
 
-Current source packages 26 CRDs (v0.1.3 ships 17), but you
+Current source packages 27 CRDs (v0.1.3 ships 17), but you
 only ever write a handful of them by hand. The rest are
 bookkeeping the controller creates and owns — they exist so that a controller restart, a crashed
 Pod, or a lost network call cannot lose track of work in flight.
@@ -164,12 +164,14 @@ Read them when you are debugging. Do not edit them.
 These live in their own API groups.
 
 The source Helm chart (`manifest_staging/charts/orka`) and Kustomize CRD bundle
-(`config/crd`) both contain all 26 CRDs. With Kustomize, install the shared CRDs through
+(`config/crd`) both contain all 27 production CRDs. The two development-only
+`fake.workspace.orka.ai` CRDs are excluded. With Kustomize, install the shared CRDs through
 the cluster's designated CRD owner before deploying workloads. `config/acp-production`
 excludes CRDs, and `make deploy` checks that the required shared CRDs are already established.
 
-The v0.1.3 release manifest has 17 CRDs, including all four `workspace.orka.ai` kinds,
-but lacks `RuntimeProviderConfig`, `RuntimeWorkspaceProfile`, and the current ACP execution
+The v0.1.3 release manifest has 17 CRDs, including the four `workspace.orka.ai`
+kinds present in that release. It lacks `RuntimeProviderConfig`,
+`RuntimeWorkspaceProfile`, and the current ACP execution
 path. The 12-CRD inventory belongs
 to the stale v0.1.1 `charts/orka/` snapshot. See [Release status](../reference/release-status.md)
 for the install differences; installing newer CRDs alone does not add the corresponding
@@ -197,6 +199,7 @@ Without the dispatch gate, Tasks that reference a class are still rejected.
 |-----|-------|---------|
 | **Gateway**, **GatewayClass**, **GatewayBinding** | `gateway.orka.ai` | Accept work from an external system through an adapter. See [Gateways](../operations/gateways.md) |
 | **ExecutionWorkspace**, **ExecutionWorkspaceClass**, **ExecutionWorkspacePool**, **ExecutionWorkspaceProvider** | `workspace.orka.ai` | The class-based lifecycle for running an agent inside an external sandbox. See [Configuration](../reference/configuration.md#workspace-providers) |
+| **ExecutionWorkspaceCheckpoint** | `workspace.orka.ai` | An authorized data-only workspace checkpoint for export or restore, behind the workspace-provider gates |
 | **RuntimeProviderConfig**, **RuntimeWorkspaceProfile** | `acp.workspace.orka.ai` | Provider settings and per-workspace profile parameters referenced by an `ExecutionWorkspaceClass` |
 
 ### Execution images

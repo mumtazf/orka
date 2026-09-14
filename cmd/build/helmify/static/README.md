@@ -2,11 +2,18 @@
 
 This chart is generated from `cmd/build/helmify`; edit the generator inputs and
 run `make manifests` rather than editing generated chart copies directly. It
-packages all 26 production Orka CRDs under `crds/`. The development-only
+packages all 27 production Orka CRDs under `crds/`. The development-only
 `fake.workspace.orka.ai` CRDs are available separately from a matching source
 checkout at `config/development/fake-workspace-provider`.
 
 ## Fresh install
+
+For v0.2.0, follow the [release installation guide](https://orka-agents.github.io/orka/docs/installation)
+to download the exact qualified chart and set every image from `candidate.json`.
+The commands below describe the chart inputs for a matching source checkout.
+Stock v0.1.3 requires a new installation; read the
+[upgrade support boundary](https://orka-agents.github.io/orka/docs/upgrading#v020-support-boundary)
+before changing an existing cluster.
 
 A normal `harness-v2` install requires Vekil to be running in `vekil-system`,
 immutable controller and Publisher image digests, and two operator-managed
@@ -163,8 +170,8 @@ cluster-scoped gateway/workspace ownership belongs only to the v2 release.
 
 ## Upgrade
 
-An in-place controller upgrade is supported only when the release namespace
-already carries the same static mode claim and any live controller declares
+The chart requires the existing release namespace to carry the same static
+mode claim for an in-place controller upgrade. Any live controller must declare
 that mode and watch namespace. A deleted controller can be recreated only
 under that retained same-mode namespace claim. A pre-static controller that
 implicitly enabled ACP is not a supported `harness-v2` upgrade source because
@@ -172,6 +179,11 @@ its accepted attempts may lack the immutable execution authority required for
 recovery. Settle or retire that installation and install static `harness-v2`
 as a new release and namespace. The chart rejects missing, opposite-mode, and
 legacy identity before rendering upgrade resources.
+
+These prerequisites do not qualify a specific source/target version pair.
+v0.2.0 advertises fresh installation and same-version retained-state recovery;
+historical same-mode upgrades remain outside its qualification. Follow the
+website's upgrade support boundary before applying the procedure below.
 
 Helm installs files from `crds/` only during installation. It does not create or
 update them during `helm upgrade`, including when upgrading from an older Orka
@@ -220,7 +232,8 @@ A matching Orka source checkout provides the same guarded flow as
 competing CRD apply workflows for the same cluster.
 
 If another system owns the CRDs, perform the CRD-first step through that system,
-wait for all 26 production CRDs to become `Established`, and then upgrade Orka.
+wait for all production CRDs from the target chart to become `Established`,
+and then upgrade Orka.
 
 If a previous release was uninstalled, update its retained CRDs first and install
 the replacement release with `--skip-crds`.

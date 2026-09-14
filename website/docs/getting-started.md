@@ -58,7 +58,7 @@ The [Glossary](reference/glossary.md) defines all of them in one place.
 - OpenSSL for generating the installation credentials and certificates.
 - An API key for at least one LLM provider (Anthropic, OpenAI, or Azure OpenAI).
 
-That is all you need for the released install below. Running `type: agent` coding agents
+That covers the v0.1.3 manifest install below. Running `type: agent` coding agents
 on the newer RuntimePool path needs more — see
 [Installing from source](#option-b-current-main-from-source).
 
@@ -67,9 +67,14 @@ toolchain versions.
 
 ## Install
 
-There are two versions of Orka, and it is worth being clear about which one you are getting.
+For the v0.2.0 release, follow [Install v0.2.0](operations/installation.md).
+That guide uses the published chart and image digests, with the required
+namespace, snapshot key, admission TLS, and provider-proxy setup. Its download
+commands require the release assets to have been published.
 
-| | Latest release (v0.1.3) | `main` |
+The older v0.1.3 installation and current source build differ:
+
+| | v0.1.3 | `main` |
 | --- | --- | --- |
 | Install | Published images, no clone | Build the images yourself |
 | `type: ai` and `type: container` Tasks | Yes | Yes |
@@ -81,7 +86,7 @@ Most of these docs describe `main`. v0.1.3 does run `type: agent` Tasks, but thr
 older per-Task Job and harness-wrapper path, so any page here that mentions ACP,
 RuntimePools, or harness modes does not apply to it. See [Release status](reference/release-status.md) for the full breakdown.
 
-### Option A: latest release
+### Option A: v0.1.3 {#option-a-latest-release}
 
 ```bash
 # The manifest mounts a harness-wrapper-auth Secret but does not create it,
@@ -108,17 +113,20 @@ helm install orka orka/orka --version 0.1.3 \
   --namespace orka-system --create-namespace
 ```
 
-Check [the tag list](https://github.com/orka-agents/orka/tags) for a newer version before
-pinning to v0.1.3. The project publishes tags and chart artifacts; it does not currently
-create GitHub Release entries, so the tags are the list to watch.
+The v0.1.x releases published tags, images, and chart artifacts. Starting with
+v0.2.0, use [GitHub Releases](https://github.com/orka-agents/orka/releases) for
+the chart, image manifest, and qualification evidence. Follow the
+[retirement procedure](operations/upgrading.md#retire-a-stock-v013-installation)
+when moving an existing v0.1.3 installation to v0.2.0.
 
 Then continue with [Give yourself an API client](#give-yourself-an-api-client).
 
 ### Option B: current `main`, from source
 
-No container images are published from `main` — the release workflow only runs on `v*`
-tags — so this path builds them locally. Use it for coding-agent Tasks that run through
-ACP, or for developing Orka itself.
+Ordinary `main` pushes do not publish installable release images. This path
+builds them locally for development. Published releases use the separate
+[Prepare Release workflow](development/release-qualification.md), which builds
+and qualifies a generated release-branch commit before tagging it.
 
 You will need, in addition to the prerequisites above:
 
@@ -265,16 +273,18 @@ image variables must use the pushed `repository@sha256:...` references.
 
 ### Two installs on one cluster
 
-Controller mode is fixed for the life of an install and cannot be changed by upgrading.
-To run the older `harness-v1` contract alongside `harness-v2`, install it as a separate
-release in a separate namespace. Tasks never move between them.
-See [Harness modes](operations/harness-modes.md).
+Controller mode is fixed for the life of a static-mode installation. The
+[harness-mode isolation rules](operations/harness-modes.md) describe separate
+static v1 and v2 installations. Stock v0.1.3 predates those rules and may watch
+the whole cluster; a different namespace alone does not make it safe to run
+alongside v0.2.0. Follow [Upgrading](operations/upgrading.md#retire-a-stock-v013-installation).
 
 ### Upgrades
 
-Helm does not update CRDs on `helm upgrade` — that is a Helm behavior, not an Orka one.
-Apply the CRDs from the target chart yourself first, every time.
-[Upgrading](operations/upgrading.md) has the procedure.
+Read the [supported upgrade paths](operations/upgrading.md#v020-support-boundary)
+before applying new CRDs or running `helm upgrade`. v0.2.0 requires a fresh
+installation when moving from v0.1.3. For a qualified same-mode upgrade, the
+CRD update is a separate step because Helm does not update CRDs on upgrade.
 
 ## Give yourself an API client
 

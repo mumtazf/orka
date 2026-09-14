@@ -8,6 +8,70 @@ description: "Upgrading Orka, including the CRD step Helm will not do for you."
 Orka is pre-1.0. Before upgrading, check that the target release supports your
 database layout and installed resources. Helm also requires a separate CRD update.
 
+## v0.2.0 support boundary {#v020-support-boundary}
+
+The v0.2.0 release gate tests a fresh `harness-v2` chart installation, a
+controller restart on the same retained volumes, continued work after that
+restart, and rejection of an opposite-mode upgrade without changing state.
+Check the published release's `acceptance.json` for the result of those checks.
+
+| Starting point or operation | v0.2.0 boundary |
+| --- | --- |
+| Fresh namespace and empty stores | Use the [release installation procedure](installation.md) and its exact chart and image digests. |
+| Restart the same qualified version with its retained state and snapshot key | Covered by the bundled release gate. |
+| Stock v0.1.3, an older release, or a pre-static controller | No in-place upgrade to v0.2.0. Retire the old installation or use a separate cluster. |
+| An older static-mode build, even with the same mode | No historical source/target upgrade pair is advertised as qualified for v0.2.0. |
+| Change `harness-v1` to `harness-v2`, or the reverse | Rejected. Use independent installations with new state. |
+| Restore a lost installation from backups | Outside this release's qualification; tracked in [#505](https://github.com/orka-agents/orka/issues/505). |
+
+Matching controller mode and SQLite layout are necessary conditions for an
+upgrade, but do not prove a version pair is compatible. The broader upgrade
+matrix remains in [#499](https://github.com/orka-agents/orka/issues/499). The
+same-mode procedure later on this page applies only when the target release
+explicitly qualifies the installed source version.
+
+## Retire a stock v0.1.3 installation {#retire-a-stock-v013-installation}
+
+Stock v0.1.3 predates static controller-mode identity. Its default controller
+can watch the entire cluster, so a new namespace alone does not isolate a
+v0.2.0 installation. The shared CRDs also change between these versions.
+Use a separate cluster when the old installation must remain running during
+the transition.
+
+1. Inventory the old installation's producers, queued and active Tasks,
+   Sessions, repository monitors, schedules, gateways, and external effects.
+   Record its Kubernetes context, workload names, image references, and volumes.
+2. Stop new submissions and automatic producers. Settle existing work through
+   the old controller and wrapper using that version's procedures. Resolve
+   active work and pending cleanup before removing workloads; a successful Task
+   alone does not establish that all external effects have settled.
+3. Preserve the old Kubernetes state, configuration, Secrets, and a consistent
+   backup of its SQLite volume. Use a storage snapshot or stop writers before
+   copying the database. Keep these records for the old installation; do not
+   attach its PVC, database, wrapper ledger, or execution records to v0.2.0.
+4. Install v0.2.0 in a separate cluster with new stores and credentials. Recreate
+   the required configuration as new objects, verify a Task and its result,
+   then route selected producers to the new API. Tasks and Sessions from
+   v0.1.3 do not continue in v0.2.0.
+5. After the transition, retire the old controller, wrapper, and producer
+   workloads and revoke their unused credentials. Keep historical data and
+   backups according to your retention policy.
+
+When recreating transaction-token configuration, follow
+[Transaction-token migration](../guides/transaction-token-migration.md) for
+the current profile, TTS endpoint, and effective-tool grants.
+
+If the same cluster must be reused, fully retire the old workloads before
+changing its shared CRDs. Have the cluster's CRD owner inventory retained
+objects and plan the schema change; do not apply the new CRDs while the old
+controller is still running. New v0.2.0 workloads need a fresh namespace and
+empty stores. The commands in [Install v0.2.0](installation.md) assume a cluster
+without retained Orka CRDs, so they are not a same-cluster conversion procedure.
+
+Do not add a static-mode label to the old namespace to bypass these checks.
+The [static v1/v2 coexistence rules](harness-modes.md) describe installations
+that already enforce those identities, not stock v0.1.3.
+
 ## Supported database layout
 
 The supported starting point is the current SQLite layout. An empty database gets
@@ -42,7 +106,10 @@ nothing.
 So: **apply the CRDs from the target chart yourself, before every upgrade** — including
 when upgrading from a release that installed no CRDs at all.
 
-## Procedure
+## Procedure for a qualified same-mode upgrade
+
+Confirm that the target release qualifies your source version before any of
+these steps. This procedure does not provide a v0.1.3-to-v0.2.0 upgrade path.
 
 Use a host with Bash, Helm, kubectl, and jq installed. Choose the target chart and
 Kubernetes context before taking backups:
@@ -221,3 +288,7 @@ performs the one-way cutover. It refuses to run while any v1 AgentRuntime, depen
 affected GatewayBinding, Task using the removed `gitSecretRef` fields, or legacy wrapper
 workload remains, and it requires attested backups of both the store and the custom
 resources before it will apply anything.
+
+That script changes CRDs after its prerequisites are met. It does not convert
+historical SQLite data, migrate Tasks or Sessions, or qualify a historical
+release upgrade. Stock v0.1.3 follows the retirement procedure above.
