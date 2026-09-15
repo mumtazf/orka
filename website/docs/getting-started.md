@@ -350,7 +350,7 @@ make build-cli
 
 ## Running a coding agent
 
-This section needs an [Option B](#option-b-current-main-from-source) install.
+These steps work with either installation option above.
 
 A `type: agent` Task runs a real coding-agent CLI against a git repository. Orka clones the
 repo, hands the agent a working copy, and records everything it does.
@@ -429,8 +429,11 @@ EOF
 ```bash
 kubectl --context "${ORKA_CONTEXT}" -n orka-system get task code-review
 kubectl --context "${ORKA_CONTEXT}" -n orka-system get runtimepools
+```
 
-make build-cli
+You can also check the Task with the [optional CLI](#the-cli):
+
+```bash
 ./bin/orka --server http://localhost:8080 --token "$ORKA_TOKEN" -n orka-system \
   task status code-review
 ```
@@ -453,6 +456,9 @@ The dashboard is included in Orka.
 See [Web dashboard](guides/ui.md).
 
 ## The CLI
+
+The CLI is optional. Build it from the root of an Orka source checkout with the
+[Go toolchain](development/development.md#prerequisites) installed:
 
 ```bash
 make build-cli

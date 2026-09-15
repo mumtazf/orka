@@ -167,16 +167,16 @@ cluster-scoped gateway/workspace ownership belongs only to the v2 release.
 
 ## Upgrade
 
-Before upgrading, check the target release's notes for a tested upgrade procedure.
-v0.2.0 release checks cover a new installation and a restart of the same version.
+v0.2.0 supports new installations only. Upgrading from another version is not
+supported. Use the steps below only for a future release that publishes a tested
+upgrade procedure for your installed version.
 See [Upgrading](https://orka-agents.github.io/orka/docs/upgrading) for details.
 
 The chart requires the controller and its namespace label to keep the same mode
 and watch namespace. It rejects upgrades that change or lack those settings.
 
 Helm installs files from `crds/` only during installation. It does not create or
-update them during `helm upgrade`, including when upgrading from an older Orka
-chart that installed no CRDs.
+update them during `helm upgrade`.
 
 Apply the exact CRD specs from the target chart before upgrading the
 controller. The first apply creates missing CRDs and transfers ownership of
@@ -229,9 +229,13 @@ the replacement release with `--skip-crds`.
 
 ## Uninstall and deletion
 
-`helm uninstall` removes release resources but retains Orka's CRDs and custom
-resources. This is Helm's standard `crds/` behavior and is not controlled by a
-chart value.
+Uninstall can delete stored data. Helm deletes the chart's persistent volume
+claims, including `orka-store` and `orka-workspace-publisher`. If their volumes
+use the `Delete` reclaim policy, Kubernetes also deletes the stored data. Back up
+the data and encryption key, and verify your recovery plan before uninstalling.
+
+Orka's CRDs and custom resources stay in the cluster. Keeping them does not
+preserve the data stored in volumes.
 
 Deleting a CRD also deletes every custom resource stored under that kind. Delete
 Orka CRDs only as an explicit cluster-wide data-destruction operation after the

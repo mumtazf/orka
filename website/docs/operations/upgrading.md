@@ -5,9 +5,8 @@ description: "Back up Orka, update its Kubernetes resource definitions, and chec
 
 # Upgrading
 
-For a new installation, start with [Install v0.2.0](installation.md).
-Before updating an existing installation, check the target release's notes
-for a tested upgrade procedure.
+v0.2.0 supports new installations only. Upgrading from another version is not
+supported. Follow [Install v0.2.0](installation.md) for setup.
 
 ## What v0.2.0 tests {#v020-support-boundary}
 
@@ -38,7 +37,8 @@ chart's CRDs before updating Orka, or Kubernetes may drop new fields.
 
 ## Upgrade steps
 
-Use these steps only when the target release supports your installed version.
+Use these steps only for a future release that publishes a tested upgrade
+procedure for your installed version.
 
 Use a host with Bash, Helm, kubectl, and jq installed. Choose the target chart and
 Kubernetes context before taking backups:
@@ -180,11 +180,19 @@ replacement with `--skip-crds`.
 
 ## Uninstall
 
+:::danger[Uninstall can delete stored data]
+Helm deletes the chart's persistent volume claims, including `orka-store` and
+`orka-workspace-publisher`. If their volumes use the `Delete` reclaim policy,
+Kubernetes also deletes the stored data. Back up the data and encryption key,
+and verify your recovery plan before uninstalling.
+:::
+
 ```bash
 helm uninstall orka --kube-context "$TARGET_CONTEXT" --namespace orka-system
 ```
 
-This removes the release's workloads but keeps the CRDs and custom resources.
+The CRDs and their custom resources stay in the cluster. Keeping them does not
+preserve the data stored in volumes.
 
 :::danger[Deleting a CRD deletes its data]
 Deleting a CRD also deletes every resource of that type across the cluster.
