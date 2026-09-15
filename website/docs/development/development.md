@@ -266,18 +266,7 @@ make manifests
 See [Helm Chart Generation and Releases](#helm-chart-generation-and-releases)
 for how staging output is promoted into `deploy/` at release time.
 
-## Build gotchas
-
-### UI embedding
-
-`make build` embeds the React UI into the controller binary via `//go:embed`. The UI must be built first:
-
-```bash
-make ui-build    # Build UI and copy to internal/uiembed/dist/
-make build       # Now the Go build will succeed
-```
-
-If the UI isn't built, the `ensure-ui-embed` Makefile target creates a stub `internal/uiembed/dist/index.html` so the Go build doesn't fail — but the embedded UI won't work.
+## Setup gotchas
 
 ### Windows BSOD during UI dependency installation
 
@@ -308,6 +297,19 @@ If Orka CI moves to a newer Bun version, check the `bun-version` in
 `.github/workflows/test.yml` before applying this workaround.
 
 :::
+
+## Build gotchas
+
+### UI embedding
+
+`make build` embeds the React UI into the controller binary via `//go:embed`. The UI must be built first:
+
+```bash
+make ui-build    # Build UI and copy to internal/uiembed/dist/
+make build       # Now the Go build will succeed
+```
+
+If the UI isn't built, the `ensure-ui-embed` Makefile target creates a stub `internal/uiembed/dist/index.html` so the Go build doesn't fail — but the embedded UI won't work.
 
 ### CLI version injection
 
