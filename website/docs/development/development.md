@@ -279,6 +279,36 @@ make build       # Now the Go build will succeed
 
 If the UI isn't built, the `ensure-ui-embed` Makefile target creates a stub `internal/uiembed/dist/index.html` so the Go build doesn't fail — but the embedded UI won't work.
 
+### Windows BSOD during UI dependency installation
+
+:::note[Known issue with Bun 1.4.2]
+
+On Windows, Bun 1.4.2 may cause a BSOD while `make ui-install` runs
+`bun install`. If this happens, remove Bun 1.4.2 and install the version
+currently used by Orka CI (`1.3.13`):
+
+```bash
+rm -rf "$HOME/.bun"
+curl -fsSL https://bun.com/install | bash -s "bun-v1.3.13"
+```
+
+Restart the terminal and verify the installed version:
+
+```bash
+bun --version
+```
+
+The command should report `1.3.13`. Then retry:
+
+```bash
+make ui-install
+```
+
+If Orka CI moves to a newer Bun version, check the `bun-version` in
+`.github/workflows/test.yml` before applying this workaround.
+
+:::
+
 ### CLI version injection
 
 `make build-cli` injects Git version info via `-ldflags`:
