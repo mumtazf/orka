@@ -19,8 +19,11 @@ The release workflow publishes these files:
 | `qualification.json` | The release test run and checksums for its reports |
 | `acceptance.json` | Results for installation, restart, agent, publication, and cleanup tests |
 
-Use the chart and `candidate.json` from the same release. The installation guide
-uses them to select the tested images automatically.
+`candidate.json` is metadata written by the release workflow. The chart currently
+requires image digests, fixed image IDs, to be supplied separately. The installation
+commands read them from this file automatically, so you do not need to copy image
+IDs or edit the metadata. The chart is also available from Orka's Helm repository
+at `https://orka-agents.github.io/orka/charts`.
 
 ## Check your installation {#which-one-am-i-running}
 
