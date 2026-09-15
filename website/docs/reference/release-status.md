@@ -6,8 +6,7 @@ description: "Where to get Orka releases and what each release includes."
 # Release status
 
 Get published versions from [GitHub Releases](https://github.com/orka-agents/orka/releases).
-For a new installation, follow [Install v0.2.0](../operations/installation.md).
-Its download commands work once the release is published.
+For a new installation, follow [Install Orka](../operations/installation.md).
 
 ## Release files
 
@@ -35,9 +34,10 @@ kubectl -n orka-system get deploy orka-controller \
 kubectl get crd -o name | grep -c '\.orka\.ai$'
 ```
 
-The chart includes 27 CRDs. The two `fake.workspace.orka.ai` development CRDs
-are excluded. A CRD count alone does not identify the running version because
-Kubernetes keeps CRDs after an uninstall. Check the chart version and image too.
+Compare the CRDs with those in your release's chart. Development CRDs are
+packaged separately. A CRD count alone does not identify the running version
+because Kubernetes keeps CRDs after an uninstall. Check the chart version and
+image too.
 
 ## Build from source {#installing-main}
 

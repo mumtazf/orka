@@ -98,12 +98,10 @@ credential broker. Artifact access is separately operation-scoped.
 
 ### Install
 
-Follow [Install Orka v0.2.0](website/docs/operations/installation.md) to set up a
-new Kubernetes installation and run a test task. The guide covers the required
-tools, model connection, certificates, and encryption key.
+Follow [Install Orka](website/docs/operations/installation.md) to set up Orka on
+Kubernetes and run a test task. The guide covers the required tools, model
+connection, certificates, and encryption key.
 
-The download commands work once v0.2.0 is published on
-[GitHub Releases](https://github.com/orka-agents/orka/releases).
 For development, [build from source](website/docs/getting-started.md#option-b-current-main-from-source).
 
 ### Create an API client

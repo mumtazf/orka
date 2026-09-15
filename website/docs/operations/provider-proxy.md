@@ -133,7 +133,7 @@ The API key is deliberately `dummy` — Vekil supplies the real one.
 
 ## Enable it in Orka
 
-Set up Vekil as shown above, then follow [Install v0.2.0](installation.md).
+Set up Vekil as shown above, then follow [Install Orka](installation.md).
 For development, use [Build from source](../getting-started.md#option-b-current-main-from-source).
 Both guides enable the proxy with `providerProxy.enabled=true`.
 

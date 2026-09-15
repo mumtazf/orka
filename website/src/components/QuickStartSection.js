@@ -10,7 +10,7 @@ export default function QuickStartSection() {
       </p>
       <div className="quickstart-grid">
         <div className="quickstart-card">
-          <h3>1. Install Orka v0.2.0</h3>
+          <h3>1. Install Orka</h3>
           <p>
             Follow the Helm guide to set up a new installation and check it
             with a test task.
@@ -32,7 +32,7 @@ export default function QuickStartSection() {
         </div>
       </div>
       <p className="section-subtitle">
-        Download commands work once v0.2.0 is published. For development,{' '}
+        For development,{' '}
         <Link to="/docs/getting-started#option-b-current-main-from-source">
           build from source
         </Link>.

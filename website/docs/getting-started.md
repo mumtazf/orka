@@ -63,11 +63,10 @@ required tools, storage, and model connection setup.
 
 ## Install
 
-### Option A: install v0.2.0 {#option-a-latest-release}
+### Option A: install a release {#option-a-latest-release}
 
-Follow [Install v0.2.0](operations/installation.md) to download the release,
-install it with Helm, and run a test task. The download commands work once
-v0.2.0 is available on [GitHub Releases](https://github.com/orka-agents/orka/releases).
+Follow [Install Orka](operations/installation.md) to choose a published release,
+install it with Helm, and run a test task.
 
 Then [connect to the API](#give-yourself-an-api-client) and run your first AI task below.
 

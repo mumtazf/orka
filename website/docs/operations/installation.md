@@ -1,14 +1,12 @@
 ---
 slug: /installation
-description: "Install Orka v0.2.0 on a new Kubernetes cluster and run a test task."
+description: "Install Orka on Kubernetes and run a test task."
 ---
 
-# Install v0.2.0
+# Install Orka
 
-This guide installs Orka on a new Kubernetes cluster using Helm.
-The download commands work once v0.2.0 is available on
-[GitHub Releases](https://github.com/orka-agents/orka/releases).
-Until then, [build from source](../getting-started.md#option-b-current-main-from-source).
+This guide installs a published Orka release on Kubernetes using Helm.
+For development, [build from source](../getting-started.md#option-b-current-main-from-source).
 
 ## Before you start
 
@@ -26,16 +24,20 @@ cluster connection name to use for `ORKA_CONTEXT` below.
 
 ## 1. Download and check the release
 
-Download the Helm chart, which is Orka's install package, and `candidate.json`,
-which lists the release files and images. The checks below verify the chart
-checksum and require a fixed image digest for each component.
+Choose a published [release](https://github.com/orka-agents/orka/releases) with a
+Helm chart and `candidate.json`. Set `ORKA_VERSION` below to its tag, including
+the leading `v`.
+
+The chart is Orka's install package. `candidate.json` lists the release files
+and images. The checks below verify the chart checksum and require a fixed
+image digest for each component.
 
 ```bash
 set -euo pipefail
 umask 077
 
 export ORKA_CONTEXT='<your-kubeconfig-context>'
-export ORKA_VERSION=v0.2.0
+export ORKA_VERSION='<release-tag>'
 ORKA_INSTALL_DIR="$(mktemp -d "${TMPDIR:-/tmp}/orka-install.XXXXXX")"
 cd "${ORKA_INSTALL_DIR}"
 
@@ -160,17 +162,17 @@ helm install orka "${ORKA_CHART}" \
   --values release-values.json --wait --timeout 10m
 ```
 
-Helm installs 27 Orka CRDs. Coding agents use `orka-runtimes` as their namespace.
-Optional workspace providers stay disabled.
+Helm installs the CRDs included in the chart. Coding agents use `orka-runtimes`
+as their namespace. Optional workspace providers stay disabled.
 
 ## 5. Run a test task
 
 Check that the deployments are ready and the data volumes show `Bound`.
-The CRD count should be 27. Then run a container task that prints a known result:
+List the installed CRDs, then run a container task that prints a known result:
 
 ```bash
 kubectl --context "${ORKA_CONTEXT}" -n orka-system get deployments,pvc
-kubectl --context "${ORKA_CONTEXT}" get crd -o name | grep -c '\.orka\.ai$'
+kubectl --context "${ORKA_CONTEXT}" get crd -o name | grep '\.orka\.ai$'
 
 kubectl --context "${ORKA_CONTEXT}" -n orka-system create -f - <<'YAML'
 apiVersion: core.orka.ai/v1alpha1

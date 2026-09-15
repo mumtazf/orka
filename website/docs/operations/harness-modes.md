@@ -10,7 +10,7 @@ platform-owned CRD schema bundle, but they do not share Tasks, Sessions,
 controller state, or execution data planes.
 
 For a new installation, use `harness-v2` and follow
-[Install v0.2.0](installation.md).
+[Install Orka](installation.md).
 
 ## Static mode contract
 

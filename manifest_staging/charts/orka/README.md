@@ -2,13 +2,13 @@
 
 This chart is generated from `cmd/build/helmify`; edit the generator inputs and
 run `make manifests` rather than editing generated chart copies directly. It
-packages all 27 production Orka CRDs under `crds/`. The development-only
+packages all production Orka CRDs under `crds/`. The development-only
 `fake.workspace.orka.ai` CRDs are available separately from a matching source
 checkout at `config/development/fake-workspace-provider`.
 
 ## Fresh install
 
-To install v0.2.0, follow the [installation guide](https://orka-agents.github.io/orka/docs/installation).
+To install Orka, follow the [installation guide](https://orka-agents.github.io/orka/docs/installation).
 It downloads the release and sets up the chart step by step.
 Run the source examples below from the repository root.
 
@@ -167,9 +167,9 @@ cluster-scoped gateway/workspace ownership belongs only to the v2 release.
 
 ## Upgrade
 
-v0.2.0 supports new installations only. Upgrading from another version is not
-supported. Use the steps below only for a future release that publishes a tested
-upgrade procedure for your installed version.
+Orka currently supports new installations only. Upgrades between versions are
+not yet supported. Use the steps below only when the target release publishes
+a tested upgrade procedure for your installed version.
 See [Upgrading](https://orka-agents.github.io/orka/docs/upgrading) for details.
 
 The chart requires the controller and its namespace label to keep the same mode

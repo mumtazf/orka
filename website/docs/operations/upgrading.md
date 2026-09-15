@@ -5,10 +5,10 @@ description: "Back up Orka, update its Kubernetes resource definitions, and chec
 
 # Upgrading
 
-v0.2.0 supports new installations only. Upgrading from another version is not
-supported. Follow [Install v0.2.0](installation.md) for setup.
+Orka currently supports new installations only. Upgrades between versions are
+not yet supported. Follow [Install Orka](installation.md) for setup.
 
-## What v0.2.0 tests {#v020-support-boundary}
+## What release checks cover {#release-checks}
 
 The release checks install the chart after creating CRDs and internal Secrets
 separately. They restart the controller using the same data and encryption key,
@@ -37,7 +37,7 @@ chart's CRDs before updating Orka, or Kubernetes may drop new fields.
 
 ## Upgrade steps
 
-Use these steps only for a future release that publishes a tested upgrade
+Use these steps only when the target release publishes a tested upgrade
 procedure for your installed version.
 
 Use a host with Bash, Helm, kubectl, and jq installed. Choose the target chart and
@@ -148,7 +148,7 @@ kubectl --context "$TARGET_CONTEXT" -n orka-system rollout status deploy/orka-co
 kubectl --context "$TARGET_CONTEXT" get crd -o name | grep '\.orka\.ai$' | wc -l
 ```
 
-The CRD count should match the target chart. v0.2.0 includes 27.
+The CRD count should match the target chart.
 Also check the pools that run coding agents:
 
 ```bash
