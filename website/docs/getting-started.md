@@ -88,6 +88,7 @@ You will need, in addition to the prerequisites above:
   execution snapshots.
 
 ```bash
+export ORKA_CONTEXT='<your-kubeconfig-context>'
 git clone https://github.com/orka-agents/orka.git
 cd orka
 ```
@@ -129,7 +130,7 @@ Claim a namespace for the install. The label is not optional — the controller 
 startup and exits if it is missing or does not match:
 
 ```bash
-kubectl create -f - <<'EOF'
+kubectl --context "${ORKA_CONTEXT}" create -f - <<'EOF'
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -143,7 +144,7 @@ Create the two required Secrets. The snapshot key encrypts stored agent executio
 keep it somewhere safe, because rotating it makes existing snapshots unreadable:
 
 ```bash
-kubectl -n orka-system create secret generic orka-agent-snapshot-key \
+kubectl --context "${ORKA_CONTEXT}" -n orka-system create secret generic orka-agent-snapshot-key \
   --from-literal=key="$(openssl rand -base64 32)"
 ```
 
@@ -159,7 +160,7 @@ openssl req -x509 -newkey rsa:2048 -nodes -days 365 \
   -subj "/CN=orka-webhook.orka-system.svc" \
   -addext "subjectAltName=DNS:orka-webhook.orka-system.svc,DNS:orka-webhook.orka-system.svc.cluster.local"
 
-kubectl -n orka-system create secret generic orka-webhook-tls \
+kubectl --context "${ORKA_CONTEXT}" -n orka-system create secret generic orka-webhook-tls \
   --type=kubernetes.io/tls \
   --from-file=tls.crt=/tmp/webhook.crt \
   --from-file=tls.key=/tmp/webhook.key \
@@ -177,9 +178,10 @@ Install the chart. Use `manifest_staging/charts/orka` — that is the chart that
 and is a generation behind:
 
 ```bash
-WEBHOOK_CA_BUNDLE="$(kubectl -n orka-system get secret orka-webhook-tls -o jsonpath='{.data.ca\.crt}')"
+WEBHOOK_CA_BUNDLE="$(kubectl --context "${ORKA_CONTEXT}" -n orka-system get secret orka-webhook-tls -o jsonpath='{.data.ca\.crt}')"
 
 helm install orka ./manifest_staging/charts/orka \
+  --kube-context "${ORKA_CONTEXT}" \
   --namespace orka-system \
   --set controller.mode=harness-v2 \
   --set controller.watchNamespace=orka-system \
@@ -257,10 +259,10 @@ never run. `kubectl create token orka-client` fails the same way without it.
 ### 1. Create a Provider
 
 ```bash
-kubectl -n orka-system create secret generic anthropic-secret \
+kubectl --context "${ORKA_CONTEXT}" -n orka-system create secret generic anthropic-secret \
   --from-literal=api-key=your-api-key
 
-kubectl apply -f - <<'EOF'
+kubectl --context "${ORKA_CONTEXT}" apply -f - <<'EOF'
 apiVersion: core.orka.ai/v1alpha1
 kind: Provider
 metadata:
@@ -278,7 +280,7 @@ EOF
 ### 2. Create an Agent
 
 ```bash
-kubectl apply -f - <<'EOF'
+kubectl --context "${ORKA_CONTEXT}" apply -f - <<'EOF'
 apiVersion: core.orka.ai/v1alpha1
 kind: Agent
 metadata:
@@ -297,7 +299,7 @@ EOF
 ### 3. Run a Task
 
 ```bash
-kubectl apply -f - <<'EOF'
+kubectl --context "${ORKA_CONTEXT}" apply -f - <<'EOF'
 apiVersion: core.orka.ai/v1alpha1
 kind: Task
 metadata:
@@ -314,7 +316,7 @@ EOF
 ### 4. Read the result
 
 ```bash
-kubectl -n orka-system get task hello-task
+kubectl --context "${ORKA_CONTEXT}" -n orka-system get task hello-task
 
 curl -H "Authorization: Bearer ${ORKA_TOKEN}" \
   http://localhost:8080/api/v1/tasks/hello-task/result
@@ -369,7 +371,7 @@ Ready before submitting agent Tasks.
 ### 2. Create an Agent with a runtime
 
 ```bash
-kubectl apply -f - <<'EOF'
+kubectl --context "${ORKA_CONTEXT}" apply -f - <<'EOF'
 apiVersion: core.orka.ai/v1alpha1
 kind: Agent
 metadata:
@@ -398,7 +400,7 @@ Two runtime-specific notes:
 ### 3. Run it
 
 ```bash
-kubectl apply -f - <<'EOF'
+kubectl --context "${ORKA_CONTEXT}" apply -f - <<'EOF'
 apiVersion: core.orka.ai/v1alpha1
 kind: Task
 metadata:
@@ -425,8 +427,8 @@ EOF
 ### 4. Watch it
 
 ```bash
-kubectl -n orka-system get task code-review
-kubectl -n orka-system get runtimepools
+kubectl --context "${ORKA_CONTEXT}" -n orka-system get task code-review
+kubectl --context "${ORKA_CONTEXT}" -n orka-system get runtimepools
 
 make build-cli
 ./bin/orka --server http://localhost:8080 --token "$ORKA_TOKEN" -n orka-system \

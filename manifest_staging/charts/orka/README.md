@@ -10,7 +10,7 @@ checkout at `config/development/fake-workspace-provider`.
 
 To install v0.2.0, follow the [installation guide](https://orka-agents.github.io/orka/docs/installation).
 It downloads the release and sets up the chart step by step.
-The commands below are for a matching source checkout.
+Run the source examples below from the repository root.
 
 A normal `harness-v2` install requires Vekil to be running in `vekil-system`,
 immutable controller and Publisher image digests, and two operator-managed
@@ -55,7 +55,7 @@ kubectl -n orka-system create secret generic orka-webhook-tls \
 WEBHOOK_CA_BUNDLE="$(kubectl -n orka-system get secret orka-webhook-tls \
   -o jsonpath='{.data.ca\.crt}')"
 
-helm install orka charts/orka \
+helm install orka ./manifest_staging/charts/orka \
   --namespace orka-system \
   --set controller.mode=harness-v2 \
   --set controller.watchNamespace=orka-system \
@@ -139,7 +139,7 @@ metadata:
     orka.ai/controller-mode: harness-v2
 EOF
 
-helm install orka-v2 charts/orka \
+helm install orka-v2 ./manifest_staging/charts/orka \
   --namespace orka-v2-system \
   --set controller.mode=harness-v2 \
   --set controller.watchNamespace=orka-v2-system
