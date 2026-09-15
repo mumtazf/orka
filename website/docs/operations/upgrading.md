@@ -94,7 +94,7 @@ If you have the workspace provider API enabled, back up its resources too:
 ```bash
 kubectl --context "$TARGET_CONTEXT" -n orka-system get \
   executionworkspaceclasses,executionworkspaceproviders,executionworkspacepools,\
-executionworkspaces,runtimeproviderconfigs,runtimeworkspaceprofiles \
+executionworkspaces,executionworkspacecheckpoints,runtimeproviderconfigs,runtimeworkspaceprofiles \
   -o json > orka-workspace-crs.json
 ```
 

@@ -445,14 +445,9 @@ See [Configuration](reference/configuration.md#execution) and
 
 ## The dashboard
 
-```bash
-# Helm names the Service after the release (svc/orka); the release
-# manifest from Option A names it svc/orka-api. Pick the one you installed.
-kubectl port-forward -n orka-system svc/orka 8080:8080
-open http://localhost:8080
-```
-
-The UI ships inside the controller binary — there is nothing extra to deploy.
+With the [API port forwarded](#give-yourself-an-api-client), open
+[http://localhost:8080](http://localhost:8080) and sign in with your client token.
+The dashboard is included in Orka.
 See [Web dashboard](guides/ui.md).
 
 ## The CLI
