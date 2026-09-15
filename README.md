@@ -159,7 +159,7 @@ The built-in orchestrator creates agents, runs tasks, monitors progress, and ret
 | [Glossary](website/docs/reference/glossary.md)                       | Every term these docs use, defined once               |
 | [Release status](website/docs/reference/release-status.md)           | Release files, checks, and installation details       |
 | [Troubleshooting](website/docs/operations/troubleshooting.md)        | Error strings, causes, and fixes                      |
-| [Upgrading](website/docs/operations/upgrading.md)                    | The CRD step Helm will not do for you                 |
+| [Upgrading](website/docs/operations/upgrading.md)                    | Upgrade support and CRD requirements                 |
 | [Architecture](website/docs/concepts/architecture.md)                         | System design, components, and data flow              |
 | [Configuration](website/docs/reference/configuration.md)                       | CRD reference, Helm values, controller flags, metrics |
 | [Observability](website/docs/guides/observability.md)                        | OpenTelemetry traces, GenAI metrics, and task trace guidance |
@@ -176,7 +176,7 @@ The built-in orchestrator creates agents, runs tasks, monitors progress, and ret
 | [OpenAI Compatibility](website/docs/reference/openai-compat.md)                | OpenAI-compatible chat completions API                |
 | [Anthropic Compatibility](website/docs/reference/anthropic-compat.md)          | Anthropic-compatible Messages API                     |
 | [Gateway API](website/docs/reference/gateway-api.md)                           | Generic Gateway resources, ingress, delivery, and operator APIs |
-| [Harness Modes](website/docs/operations/harness-modes.md)                      | Isolated v1/v2 releases, rollout, rollback, and retirement |
+| [Controller modes](website/docs/operations/harness-modes.md)                   | Advanced setup for running both execution modes |
 | [Operating Gateways](website/docs/operations/gateways.md)                      | Gateway readiness, TLS, recovery, upgrades, and operations |
 | [Web Dashboard](website/docs/guides/ui.md)                                  | Frontend architecture and pages                       |
 | [Security](website/docs/concepts/security.md)                                 | Security model and hardening                          |

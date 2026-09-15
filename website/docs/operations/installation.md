@@ -6,6 +6,7 @@ description: "Install Orka on Kubernetes and run a test task."
 # Install Orka
 
 This guide installs a published Orka release on Kubernetes using Helm.
+It names the installation `orka` and uses the namespace `orka-system`.
 For development, [build from source](../getting-started.md#option-b-current-main-from-source).
 
 ## Before you start
@@ -68,8 +69,9 @@ Stop if any download or validation check fails.
 
 ## 2. Create the namespace and encryption key
 
-Orka's controller runs in `orka-system`. The `harness-v2` label selects how it
-runs coding agents. The namespace must be new, and the label must stay unchanged.
+Orka's controller runs in `orka-system`. The `harness-v2` label selects the
+coding-agent execution mode. It is separate from the Orka release version.
+The namespace must be new, and the label must stay unchanged.
 
 ```bash
 kubectl --context "${ORKA_CONTEXT}" create -f - <<'YAML'

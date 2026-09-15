@@ -25,13 +25,14 @@ uses them to select the tested images automatically.
 ## Check your installation {#which-one-am-i-running}
 
 For a Helm release named `orka` in `orka-system`, check the chart version,
-controller image, and CRDs:
+controller image, and CRDs. Use the same cluster connection name as your installation:
 
 ```bash
-helm list --namespace orka-system
-kubectl -n orka-system get deploy orka-controller \
+export ORKA_CONTEXT='<your-kubeconfig-context>'
+helm list --kube-context "${ORKA_CONTEXT}" --namespace orka-system
+kubectl --context "${ORKA_CONTEXT}" -n orka-system get deploy orka-controller \
   -o jsonpath='{.spec.template.spec.containers[0].image}{"\n"}'
-kubectl get crd -o name | grep -c '\.orka\.ai$'
+kubectl --context "${ORKA_CONTEXT}" get crd -o name | grep -c '\.orka\.ai$'
 ```
 
 Compare the CRDs with those in your release's chart. Development CRDs are

@@ -1,76 +1,19 @@
 # Orka Helm chart
 
-This chart is generated from `cmd/build/helmify`; edit the generator inputs and
-run `make manifests` rather than editing generated chart copies directly. It
-packages all production Orka CRDs under `crds/`. The development-only
-`fake.workspace.orka.ai` CRDs are available separately from a matching source
-checkout at `config/development/fake-workspace-provider`.
+## Install
 
-## Fresh install
+Follow the [installation guide](https://orka-agents.github.io/orka/docs/installation)
+to install a published release. It covers the required image digests, encryption
+key, webhook certificate, and model connection. The installation is named `orka`
+and uses the `orka-system` namespace.
 
-To install Orka, follow the [installation guide](https://orka-agents.github.io/orka/docs/installation).
-It downloads the release and sets up the chart step by step.
-Run the source examples below from the repository root.
+Published charts are available through [GitHub Releases](https://github.com/orka-agents/orka/releases)
+and the Helm repository at `https://orka-agents.github.io/orka/charts`.
 
-A normal `harness-v2` install requires Vekil to be running in `vekil-system`,
-immutable controller and Publisher image digests, and two operator-managed
-Secrets. Prepare:
+For development, follow [Build from source](https://orka-agents.github.io/orka/docs/getting-started#option-b-current-main-from-source).
+That guide uses `manifest_staging/charts/orka` from a source checkout.
 
-- a snapshot key file containing exactly 32 random bytes;
-- a webhook serving certificate and private key whose certificate is valid for
-  `orka-webhook.orka-system.svc`, plus its PEM CA certificate; and
-- `CONTROLLER_DIGEST` and `PUBLISHER_DIGEST` values in
-  `sha256:<64 lowercase hexadecimal characters>` form.
-
-The following creates the namespace and required Secrets without putting key
-material in Helm values or command-line arguments, then installs the CRDs and
-release resources. Replace the file paths and digest placeholders first:
-
-```bash
-set -euo pipefail
-
-: "${SNAPSHOT_KEY_FILE:?set SNAPSHOT_KEY_FILE to the 32-byte key file}"
-: "${WEBHOOK_CERT_FILE:?set WEBHOOK_CERT_FILE to the serving certificate}"
-: "${WEBHOOK_PRIVATE_KEY_FILE:?set WEBHOOK_PRIVATE_KEY_FILE to the private key}"
-: "${WEBHOOK_CA_FILE:?set WEBHOOK_CA_FILE to the CA certificate}"
-: "${CONTROLLER_DIGEST:?set CONTROLLER_DIGEST to sha256:<64 lowercase hex>}"
-: "${PUBLISHER_DIGEST:?set PUBLISHER_DIGEST to sha256:<64 lowercase hex>}"
-
-kubectl create -f - <<'EOF'
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: orka-system
-  labels:
-    orka.ai/controller-mode: harness-v2
-EOF
-kubectl -n orka-system create secret generic agent-execution-snapshot-key \
-  --from-file=snapshot-key="${SNAPSHOT_KEY_FILE}"
-kubectl -n orka-system create secret generic orka-webhook-tls \
-  --type=kubernetes.io/tls \
-  --from-file=tls.crt="${WEBHOOK_CERT_FILE}" \
-  --from-file=tls.key="${WEBHOOK_PRIVATE_KEY_FILE}" \
-  --from-file=ca.crt="${WEBHOOK_CA_FILE}"
-
-WEBHOOK_CA_BUNDLE="$(kubectl -n orka-system get secret orka-webhook-tls \
-  -o jsonpath='{.data.ca\.crt}')"
-
-helm install orka ./manifest_staging/charts/orka \
-  --namespace orka-system \
-  --set controller.mode=harness-v2 \
-  --set controller.watchNamespace=orka-system \
-  --set-string controller.image.digest="${CONTROLLER_DIGEST}" \
-  --set-string publisher.image.digest="${PUBLISHER_DIGEST}" \
-  --set-string controller.agentExecutionSnapshot.existingSecret=agent-execution-snapshot-key \
-  --set-string controller.agentExecutionSnapshot.key=snapshot-key \
-  --set-string webhooks.tls.existingSecret=orka-webhook-tls \
-  --set-string webhooks.caBundle="${WEBHOOK_CA_BUNDLE}" \
-  --set providerProxy.enabled=true \
-  --wait
-```
-
-The chart defaults new installations to `harness-v2`. Controller mode remains
-an immutable installation identity and cannot be changed during an upgrade.
+## Configuration
 
 The chart installs the exact cross-namespace ingress policy for Vekil. The
 chart-managed provider proxy itself always runs in the Helm release namespace. Leave
@@ -121,49 +64,20 @@ CRDs are cluster-scoped and shared by every Orka release. Use `--skip-crds`
 only when a designated platform or GitOps workflow already manages compatible
 Orka CRDs for the cluster.
 
-## Static harness mode
+## Controller mode
 
-Every release selects exactly one controller mode: `harness-v1` or
-`harness-v2`. Fresh installs default to `harness-v2`; select `harness-v1`
-explicitly only for a compatibility release. `dual`, `auto`, and
-`harness-v1-drain` are rejected. Each release also requires a distinct,
-non-empty `controller.watchNamespace` labeled with the matching mode:
+New installations use `controller.mode=harness-v2`. This selects how Orka runs
+coding agents and is separate from the Orka release version. Keep the mode and
+the namespace's `orka.ai/controller-mode` label unchanged after installation.
 
-```bash
-kubectl create -f - <<'EOF'
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: orka-v2-system
-  labels:
-    orka.ai/controller-mode: harness-v2
-EOF
+Run one Orka installation per namespace. Set `controller.watchNamespace` to
+the Helm installation's namespace, `orka-system` in the installation guide.
+Use a distinct Helm name for every installation in the same cluster.
 
-helm install orka-v2 ./manifest_staging/charts/orka \
-  --namespace orka-v2-system \
-  --set controller.mode=harness-v2 \
-  --set controller.watchNamespace=orka-v2-system
-```
-
-The mode is an installation identity, not an upgrade toggle. Never change a
-release from v1 to v2 in place or reuse its PVC, SQLite store, ledger, Session,
-or Task identities under the other mode.
-
-A v1 and v2 release may share a cluster only when their release/watch
-namespaces, Services, ServiceAccounts/RBAC, Leases, stores, Secrets, and
-data-plane resources are disjoint. The chart intentionally requires
-`controller.watchNamespace` to equal the Helm release namespace. The v2
-release must also have its own runtime namespace. Install the shared compatible
-CRDs and common admission resources through one designated owner; install the
-second release with `--skip-crds`.
-
-Controller Services, worker ServiceAccounts, and worker RBAC are scoped to the
-Helm release name. Run only one Orka controller release per namespace. If a
-cluster has multiple releases, every release (including the first) must use a
-cluster-unique release name or `fullnameOverride`, a separate controller
-namespace, and a distinct, non-empty `controller.watchNamespace`. Cluster-wide
-watchers are rejected. All releases share the same cluster-scoped CRDs, and
-cluster-scoped gateway/workspace ownership belongs only to the v2 release.
+The `harness-v1` compatibility mode is for existing integrations that require it.
+If you need both modes on one cluster, follow the advanced
+[controller mode guide](https://orka-agents.github.io/orka/docs/operations/harness-modes).
+It covers separate installation names, namespaces, storage, and CRD ownership.
 
 ## Upgrade
 
@@ -186,8 +100,8 @@ removed by the target version do not remain from an older Helm manager:
 ```bash
 set -euo pipefail
 
-TARGET_CHART=/absolute/path/to/orka-<version>.tgz
-TARGET_CONTEXT=replace-with-context
+TARGET_CHART='<path-to-chart.tgz>'
+TARGET_CONTEXT='<your-kubeconfig-context>'
 TARGET_CRDS="$(mktemp)"
 trap 'rm -f "$TARGET_CRDS"' EXIT
 
@@ -240,3 +154,13 @@ preserve the data stored in volumes.
 Deleting a CRD also deletes every custom resource stored under that kind. Delete
 Orka CRDs only as an explicit cluster-wide data-destruction operation after the
 resources have been removed or backed up.
+
+## Chart development
+
+This chart is generated from `cmd/build/helmify`. Edit the generator inputs and
+run `make manifests` to update `manifest_staging/charts/orka`.
+Do not edit generated chart copies directly.
+
+The chart packages all production Orka CRDs under `crds/`. The development-only
+`fake.workspace.orka.ai` CRDs are available separately from a matching source
+checkout at `config/development/fake-workspace-provider`.

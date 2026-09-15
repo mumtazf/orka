@@ -172,9 +172,9 @@ the `caBundle` the API server uses to trust the webhook. With a real CA, `ca.crt
 CA's certificate instead.
 :::
 
-Install the chart. Use `manifest_staging/charts/orka` — that is the chart that matches
-`main`. The `charts/orka` directory at the repo root is the snapshot of the last release
-and is a generation behind:
+Install the development chart from `manifest_staging/charts/orka`. It matches
+the source checkout. The root `charts/orka` directory holds files prepared for
+release and may not match your code:
 
 ```bash
 WEBHOOK_CA_BUNDLE="$(kubectl --context "${ORKA_CONTEXT}" -n orka-system get secret orka-webhook-tls -o jsonpath='{.data.ca\.crt}')"
@@ -222,8 +222,8 @@ image variables must use the pushed `repository@sha256:...` references.
 
 ### Upgrades
 
-Before updating Orka, read [Upgrading](operations/upgrading.md). Helm does not
-update CRDs during an upgrade, so those need a separate step.
+Orka currently supports new installations only. Read
+[Upgrading](operations/upgrading.md) for support details and CRD requirements.
 
 ## Give yourself an API client
 

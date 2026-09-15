@@ -9,9 +9,9 @@ Built-in coding agents in Orka never receive your LLM API key. Every model call 
 goes through the supervisor's session proxy, Orka's auth proxy, and Vekil, which adds the
 real credential. This page explains the path and how to set up the two services.
 
-If you are only running `type: ai` Tasks, you do not need any of this — the AI worker reads
-provider Secrets directly. This is required for `type: agent` Tasks, and the Helm chart
-refuses to install a `harness-v2` release without it.
+The default Orka installation requires `providerProxy.enabled=true`.
+Coding-agent `type: agent` Tasks use it to reach models. Orka's own AI worker,
+used by `type: ai` Tasks, reads Provider Secrets directly.
 
 ## Why
 
@@ -48,19 +48,20 @@ quietly route model traffic somewhere unreviewed. One trailing slash is tolerate
 
 ## Install Vekil
 
-Vekil's own repository has full instructions. The short version, for a cluster:
+Vekil's own repository has full instructions. Run this helper from an Orka
+source checkout, using the same cluster connection name as your Orka installation:
 
 ```bash
-# From an Orka checkout — this helper ships with Orka, not with Vekil
+export ORKA_CONTEXT='<your-kubeconfig-context>'
 .agents/skills/vekil-reverse-proxy-deploy/scripts/deploy_vekil_reverse_proxy.sh \
-  --context '<kubectl-context>'
+  --context "${ORKA_CONTEXT}"
 ```
 
 Defaults: namespace `vekil-system`, service `vekil`, port `1337`, image
 `ghcr.io/sozercan/vekil:latest`, ClusterIP. Those defaults are exactly what Orka expects,
 so do not change the namespace or port.
 
-For a workstation:
+For standalone Vekil testing on a workstation:
 
 ```bash
 docker run -p 1337:1337 \
@@ -74,7 +75,7 @@ Point Vekil at a providers file that references Secrets rather than inline keys:
 
 ```bash
 .agents/skills/vekil-reverse-proxy-deploy/scripts/deploy_vekil_reverse_proxy.sh \
-  --context '<kubectl-context>' \
+  --context "${ORKA_CONTEXT}" \
   --providers-config ./providers.yaml \
   --env-secret AZURE_OPENAI_API_KEY=azure-openai:key
 ```
@@ -88,11 +89,12 @@ a GitHub token:
 ```bash
 # Preferred: reference a Secret you already manage
 .agents/skills/vekil-reverse-proxy-deploy/scripts/deploy_vekil_reverse_proxy.sh \
+  --context "${ORKA_CONTEXT}" \
   --env-secret COPILOT_GITHUB_TOKEN=copilot-github-token:token
 ```
 
 Without a token, Vekil falls back to device-code login and prints a code and URL to its
-Pod logs. Deploy with `--skip-wait`, watch `kubectl -n vekil-system logs deploy/vekil`,
+Pod logs. Deploy with `--skip-wait`, watch `kubectl --context "${ORKA_CONTEXT}" -n vekil-system logs deploy/vekil`,
 complete the login in a browser, then check readiness.
 
 OpenAI Codex providers additionally need an `auth.json` from `codex login`, mounted with
@@ -105,12 +107,18 @@ may force another login. Pass `--token-pvc <claim>` if that matters.
 
 ## Verify Vekil before wiring Orka
 
-```bash
-kubectl -n vekil-system port-forward svc/vekil 1337:1337
+Forward Vekil's port and leave this command running:
 
-curl http://127.0.0.1:1337/healthz
-curl http://127.0.0.1:1337/readyz
-curl http://127.0.0.1:1337/v1/models
+```bash
+kubectl --context "${ORKA_CONTEXT}" -n vekil-system port-forward svc/vekil 1337:1337
+```
+
+In a second terminal, check readiness and available models:
+
+```bash
+curl --fail http://127.0.0.1:1337/healthz
+curl --fail http://127.0.0.1:1337/readyz
+curl --fail http://127.0.0.1:1337/v1/models
 ```
 
 Do not continue until `/readyz` succeeds and the model you plan to use appears in
@@ -137,8 +145,8 @@ Set up Vekil as shown above, then follow [Install Orka](installation.md).
 For development, use [Build from source](../getting-started.md#option-b-current-main-from-source).
 Both guides enable the proxy with `providerProxy.enabled=true`.
 
-Existing `harness-v2` releases already require the proxy to be enabled. Follow
-[Upgrading](upgrading.md) to update an existing release.
+Before changing an existing installation, check the support limits in
+[Upgrading](upgrading.md).
 
 For Kustomize, use `make deploy` from a matching source checkout. First have the cluster's
 CRD owner install the shared `config/crd` bundle and prepare
@@ -155,7 +163,7 @@ references are placeholders; direct application does not perform the required se
 Confirm the Deployment is Ready before submitting agent Tasks:
 
 ```bash
-kubectl -n orka-system get deploy -l app.kubernetes.io/component=provider-auth-proxy
+kubectl --context "${ORKA_CONTEXT}" -n orka-system get deploy -l app.kubernetes.io/component=provider-auth-proxy
 ```
 
 ## Rotating the proxy token
