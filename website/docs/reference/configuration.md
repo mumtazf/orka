@@ -713,7 +713,9 @@ Key configuration values for the Helm chart:
 | `controller.acpRuntime.opencodeImage` | `""` | Digest-pinned OpenCode ACP image; Tasks fail closed when empty. |
 | `controller.acpRuntime.upgradeDrain.*` | enabled | Two-phase planned-upgrade admission closure and RuntimePool drain settings. |
 | `harnessV1.image.digest` | `""` | Required immutable wrapper image digest for a `harness-v1` release. |
-| `harnessV1.auth.existingSecret` | `""` | Dedicated v1 wrapper bearer/TLS Secret. Never share it with v2. |
+| `harnessV1.auth.existingSecret` | `""` | Dedicated v1 wrapper bearer Secret, separate from its TLS Secret. Never share it with v2. |
+| `harnessV1.tls.existingSecret` | `""` | Dedicated v1 wrapper Secret containing `tls.crt`, `tls.key`, and `ca.crt`. |
+| `harnessV1.tls.rolloutNonce` | `""` | Non-secret revision marker for certificate renewal without changing the TLS Secret name. |
 | `providerProxy.enabled` | `false` | Deploy the authenticated provider boundary in front of Vekil. Required for built-in ACP profiles. |
 | `providerProxy.upstreamBaseURL` | `http://vekil.vekil-system.svc:1337` | Exact supported Vekil upstream. An optional trailing slash is normalized; alternate hosts, namespaces, and ports are rejected to preserve the fixed NetworkPolicies. |
 | `providerProxy.auth.existingSecret` | `""` | Existing current/optional-overlap proxy bearer Secret. RuntimePool copies are controller-managed. |
@@ -751,6 +753,21 @@ Key configuration values for the Helm chart:
 ### Helm authentication Secret rotation
 
 The Publisher, SCM proxy, and controller clients load these credentials at process startup. Update the Secret and bump its corresponding nonce in the same Helm upgrade: use `publisher.auth.rolloutNonce` for the publisher-auth Secret, and `scmEgressProxy.auth.rolloutNonce` for the SCM proxy-auth Secret. The publisher nonce is applied only to controller and Publisher Pod templates; the SCM nonce is applied only to Publisher and SCM proxy Pod templates. Nonces are safe revision strings, not Secret values. Coordinated rotation can briefly fail closed while Pods roll but prevents stale or split credential generations from persisting.
+
+### Harness v1 certificate rotation
+
+The harness-v1 wrapper keeps bearer and TLS credentials in separate Secrets.
+`harnessV1.auth.existingSecret` contains only the bearer token and is immutable
+while the wrapper Deployment exists. `harnessV1.tls.existingSecret` contains
+`tls.crt`, `tls.key`, and `ca.crt`.
+
+Changing the TLS Secret name triggers a drained wrapper restart. For certificate
+renewal under the same name, update the TLS Secret and bump
+`harnessV1.tls.rolloutNonce` in the same Helm upgrade. The hook drains the live
+wrapper before restarting the wrapper and controller.
+
+Keep the updated `ca.crt` able to verify the certificate served during the drain.
+Alternatively, use a new TLS Secret name so the hook can mount the prior CA.
 
 ### Canonical Kustomize overlay
 

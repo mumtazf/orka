@@ -117,9 +117,10 @@ From a checkout matching the version you are upgrading to:
 scripts/apply-helm-crds.sh "$TARGET_CHART" "$TARGET_CONTEXT"
 ```
 
-The script updates the CRDs and waits until Kubernetes accepts them.
-It stops if another writer changes a CRD during the update. The manual steps are in the
-[chart README](https://github.com/orka-agents/orka/blob/main/manifest_staging/charts/orka/README.md).
+The [script](https://github.com/orka-agents/orka/blob/main/scripts/apply-helm-crds.sh)
+applies the exact CRD definitions from the chart and waits until Kubernetes
+accepts them. It removes fields omitted by the target chart and stops if
+another writer changes a CRD during the update.
 
 If a separate platform team or GitOps system owns CRDs in your cluster, do this step
 through that system instead, wait for every Orka CRD to become `Established`, then
