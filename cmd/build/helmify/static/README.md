@@ -8,12 +8,9 @@ checkout at `config/development/fake-workspace-provider`.
 
 ## Fresh install
 
-For v0.2.0, follow the [release installation guide](https://orka-agents.github.io/orka/docs/installation)
-to download the exact qualified chart and set every image from `candidate.json`.
-The commands below describe the chart inputs for a matching source checkout.
-Stock v0.1.3 requires a new installation; read the
-[upgrade support boundary](https://orka-agents.github.io/orka/docs/upgrading#v020-support-boundary)
-before changing an existing cluster.
+To install v0.2.0, follow the [installation guide](https://orka-agents.github.io/orka/docs/installation).
+It downloads the release and sets up the chart step by step.
+The commands below are for a matching source checkout.
 
 A normal `harness-v2` install requires Vekil to be running in `vekil-system`,
 immutable controller and Publisher image digests, and two operator-managed
@@ -170,20 +167,12 @@ cluster-scoped gateway/workspace ownership belongs only to the v2 release.
 
 ## Upgrade
 
-The chart requires the existing release namespace to carry the same static
-mode claim for an in-place controller upgrade. Any live controller must declare
-that mode and watch namespace. A deleted controller can be recreated only
-under that retained same-mode namespace claim. A pre-static controller that
-implicitly enabled ACP is not a supported `harness-v2` upgrade source because
-its accepted attempts may lack the immutable execution authority required for
-recovery. Settle or retire that installation and install static `harness-v2`
-as a new release and namespace. The chart rejects missing, opposite-mode, and
-legacy identity before rendering upgrade resources.
+Before upgrading, check the target release's notes for a tested upgrade procedure.
+v0.2.0 release checks cover a new installation and a restart of the same version.
+See [Upgrading](https://orka-agents.github.io/orka/docs/upgrading) for details.
 
-These prerequisites do not qualify a specific source/target version pair.
-v0.2.0 advertises fresh installation and same-version retained-state recovery;
-historical same-mode upgrades remain outside its qualification. Follow the
-website's upgrade support boundary before applying the procedure below.
+The chart requires the controller and its namespace label to keep the same mode
+and watch namespace. It rejects upgrades that change or lack those settings.
 
 Helm installs files from `crds/` only during installation. It does not create or
 update them during `helm upgrade`, including when upgrading from an older Orka

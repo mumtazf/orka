@@ -1,39 +1,34 @@
 ---
 slug: /installation
-description: "Install v0.2.0 from its qualified chart and image digests in a fresh harness-v2 installation."
+description: "Install Orka v0.2.0 on a new Kubernetes cluster and run a test task."
 ---
 
 # Install v0.2.0
 
-Use this procedure once the [v0.2.0 GitHub Release](https://github.com/orka-agents/orka/releases)
-is published with `candidate.json`, `qualification.json`, `acceptance.json`, and
-`orka-0.2.0.tgz`. The release workflow publishes these files after the packaged
-chart and images pass qualification. Until publication, use the
-[source installation](../getting-started.md#option-b-current-main-from-source)
-for development.
+This guide installs Orka on a new Kubernetes cluster using Helm.
+The download commands work once v0.2.0 is available on
+[GitHub Releases](https://github.com/orka-agents/orka/releases).
+Until then, [build from source](../getting-started.md#option-b-current-main-from-source).
 
-This is a fresh `harness-v2` installation with a new namespace and empty stores.
-For an existing Orka cluster, read the [upgrade support boundary](upgrading.md#v020-support-boundary)
-first. Stock `v0.1.3` cannot be upgraded to this installation in place.
-
-## Prerequisites
+## Before you start
 
 - Bash, curl, jq, `shasum`, Helm, kubectl, and OpenSSL.
-- A Kubernetes context for a cluster without an existing Orka installation or
-  retained Orka CRDs. The cluster must support the admission resources in the
-  target chart, enforce NetworkPolicies, and pull images from `ghcr.io`.
-- A default StorageClass that can provision the controller and Publisher's
-  ReadWriteOnce volumes. If there is no default, set `store.persistence.storageClass`
-  and `publisher.persistence.storageClass` in the values below.
-- [Vekil](provider-proxy.md) running at `http://vekil.vekil-system.svc:1337`, with
-  working provider authentication and the models you intend to use. The chart
-  deploys Orka's authenticated proxy; Vekil is installed separately.
+- A cluster with no existing Orka installation or Orka CRDs. CRDs define
+  Kubernetes resource types, such as Orka Tasks. You need permission to install
+  them and the admission webhooks that check these resources.
+- NetworkPolicy enforcement and access to pull images from `ghcr.io`.
+- A StorageClass for persistent data volumes.
+- [Vekil](provider-proxy.md) running at `http://vekil.vekil-system.svc:1337`
+  with access to your model provider. Orka uses it to connect coding agents to models.
 
-The commands use release name `orka`, controller namespace `orka-system`, and
-runtime namespace `orka-runtimes`. Run them in the same Bash shell. Set the
-context explicitly so each command reaches the intended cluster.
+Run the steps in one Bash shell. Use `kubectl config get-contexts` to find the
+cluster connection name to use for `ORKA_CONTEXT` below.
 
-## Download the release bundle
+## 1. Download and check the release
+
+Download the Helm chart, which is Orka's install package, and `candidate.json`,
+which lists the release files and images. The checks below verify the chart
+checksum and require a fixed image digest for each component.
 
 ```bash
 set -euo pipefail
@@ -50,24 +45,29 @@ curl --fail --location --output "orka-${ORKA_VERSION#v}.tgz" \
   "${ORKA_RELEASE_URL}/orka-${ORKA_VERSION#v}.tgz"
 
 jq -e --arg version "${ORKA_VERSION}" '
-  .schemaVersion == 1 and .repository == "orka-agents/orka"
+  .images as $images
+  | .schemaVersion == 1 and .repository == "orka-agents/orka"
   and .version == $version
   and .chart.file == ("orka-" + ($version | ltrimstr("v")) + ".tgz")
+  and all([
+    "controller", "ai-worker", "general-worker", "workspace-publisher",
+    "acp-codex-runtime", "acp-claude-runtime", "acp-copilot-runtime", "acp-opencode-runtime"
+  ][]; . as $role | $images[$role]
+    | type == "string" and test("^ghcr[.]io/orka-agents/orka"
+      + (if $role == "controller" then "" else "/" + $role end)
+      + "@sha256:[0-9a-f]{64}$"))
 ' candidate.json >/dev/null
 jq -r '.chart | "\(.sha256)  \(.file)"' candidate.json | shasum -a 256 --check
 
 ORKA_CHART="${ORKA_INSTALL_DIR}/orka-${ORKA_VERSION#v}.tgz"
 ```
 
-Stop if a download or checksum check fails. The archive is the exact chart
-tested for this release. `candidate.json` identifies its source commit and all
-image digests; the Helm values below use those digests directly.
+Stop if any download or validation check fails.
 
-## Create the namespace and installation Secrets
+## 2. Create the namespace and encryption key
 
-Create a new namespace with its permanent controller mode claim. If this name
-already exists, stop and inspect the existing installation before proceeding.
-Do not relabel an old namespace to adopt it.
+Orka's controller runs in `orka-system`. The `harness-v2` label selects how it
+runs coding agents. The namespace must be new, and the label must stay unchanged.
 
 ```bash
 kubectl --context "${ORKA_CONTEXT}" create -f - <<'YAML'
@@ -84,14 +84,16 @@ kubectl --context "${ORKA_CONTEXT}" -n orka-system create secret generic orka-ag
   --from-file=key=agent-snapshot.key
 ```
 
-Back up this 32-byte snapshot key with the installation's state. Retained
-execution snapshots require the same key after a restart. Keep the key out of
-Git and Helm values, and do not regenerate it when reusing a store.
+This key encrypts saved agent configuration. Keep it with your backups, outside
+Git and Helm values. Reuse the same key when restarting with existing data.
 
-The admission certificate must cover `orka-webhook.orka-system.svc`. Prepare
-`tls.crt`, `tls.key`, and `ca.crt` from your certificate issuer, with
-`DNS:orka-webhook.orka-system.svc` in the certificate's subject alternative names.
-For local evaluation, this self-signed example creates those files:
+## 3. Set up the webhook certificate
+
+Kubernetes calls Orka's webhook to check resources. It needs a TLS certificate
+valid for `orka-webhook.orka-system.svc`.
+
+Use `tls.crt`, `tls.key`, and the issuer's certificate `ca.crt` from your
+certificate issuer. For a test cluster, this self-signed example creates them:
 
 ```bash
 openssl req -x509 -newkey rsa:2048 -nodes -sha256 -days 30 \
@@ -101,8 +103,7 @@ openssl req -x509 -newkey rsa:2048 -nodes -sha256 -days 30 \
 cp tls.crt ca.crt
 ```
 
-Create the TLS Secret, then read only the public CA certificate for the
-webhook's `caBundle`:
+Save the certificate in Kubernetes and read its public CA certificate for Helm:
 
 ```bash
 kubectl --context "${ORKA_CONTEXT}" -n orka-system create secret generic orka-webhook-tls \
@@ -113,17 +114,13 @@ ORKA_WEBHOOK_CA_BUNDLE="$(kubectl --context "${ORKA_CONTEXT}" -n orka-system \
   get secret orka-webhook-tls -o jsonpath='{.data.ca\.crt}')"
 ```
 
-The chart creates its internal artifact, Publisher, provider-proxy, and
-SCM-proxy authentication Secrets. Model-provider credentials remain in Vekil.
-Keep the private files in this temporary directory protected until you have
-stored the required backups, then remove the temporary copies.
+Orka creates its other internal Secrets automatically. Model credentials stay
+in Vekil. Remove temporary private key files after backing them up securely.
 
-## Install the chart with the release images
+## 4. Install Orka
 
-Generate a values file from the release manifest. This selects the controller,
-both native workers, the Publisher, and all four ACP runtimes from the same
-release. The file contains image references and the public CA certificate;
-private keys stay in Kubernetes Secrets.
+Create a Helm settings file. It selects the eight images used by this installation
+by digest, a fixed image ID. Private keys stay in Kubernetes Secrets.
 
 ```bash
 jq --arg ca "${ORKA_WEBHOOK_CA_BUNDLE}" '
@@ -152,17 +149,24 @@ jq --arg ca "${ORKA_WEBHOOK_CA_BUNDLE}" '
     webhooks: {tls: {existingSecret: "orka-webhook-tls"}, caBundle: $ca}
   }
 ' candidate.json > release-values.json
+```
 
+If your cluster has no default StorageClass, set `store.persistence.storageClass`
+and `publisher.persistence.storageClass` in this file before installing.
+
+```bash
 helm install orka "${ORKA_CHART}" \
   --kube-context "${ORKA_CONTEXT}" --namespace orka-system \
   --values release-values.json --wait --timeout 10m
 ```
 
-Helm creates the chart's 27 production CRDs on this fresh installation. The two
-development-only `fake.workspace.orka.ai` CRDs are excluded. Optional workspace
-providers remain disabled; installing their CRDs does not enable them.
+Helm installs 27 Orka CRDs. Coding agents use `orka-runtimes` as their namespace.
+Optional workspace providers stay disabled.
 
-## Verify the installation
+## 5. Run a test task
+
+Check that the deployments are ready and the data volumes show `Bound`.
+The CRD count should be 27. Then run a container task that prints a known result:
 
 ```bash
 kubectl --context "${ORKA_CONTEXT}" -n orka-system get deployments,pvc
@@ -185,18 +189,24 @@ kubectl --context "${ORKA_CONTEXT}" -n orka-system wait \
   --for=jsonpath='{.status.phase}'=Succeeded task/release-install-check --timeout=3m
 ```
 
-The controller and Publisher PVCs must be `Bound`, the deployments must be
-ready, and the Task must succeed. Follow
-[Give yourself an API client](../getting-started.md#give-yourself-an-api-client)
-using this same context and the Helm Service `svc/orka`. Read
-`GET /api/v1/tasks/release-install-check/result?namespace=orka-system`; its result
-must contain `ORKA_INSTALL_OK`.
+To read the result, connect to Orka's API. Leave this command running:
 
-This Task needs no model credentials. Before submitting coding-agent Tasks,
-verify Vekil's readiness and your chosen models as described in
-[Provider proxy](provider-proxy.md#verify-vekil-before-wiring-orka).
+```bash
+kubectl --context "${ORKA_CONTEXT}" -n orka-system port-forward svc/orka 8080:8080
+```
 
-Keep `candidate.json` and `release-values.json` with the installation record.
-The release's attached `acceptance.json` records the chart recovery and runtime
-checks. See [Release qualification](../development/release-qualification.md)
-for the coverage and [Upgrading](upgrading.md) before changing this installation.
+In a second Bash terminal, use the same cluster connection name and read the result:
+
+```bash
+export ORKA_CONTEXT='<your-kubeconfig-context>'
+ORKA_TOKEN="$(kubectl --context "${ORKA_CONTEXT}" -n orka-system create token orka-client)"
+curl --fail --silent --show-error \
+  -H "Authorization: Bearer ${ORKA_TOKEN}" \
+  'http://localhost:8080/api/v1/tasks/release-install-check/result?namespace=orka-system'
+```
+
+The response should contain `ORKA_INSTALL_OK`. This test does not call a model.
+Stop the port-forward with Ctrl-C when finished.
+
+Keep `candidate.json` and `release-values.json` with your installation records.
+To run a coding-agent task next, [check your model connection](provider-proxy.md#verify-vekil-before-wiring-orka).

@@ -10,11 +10,9 @@ dispatch, tagging, image promotion, chart publication, and release evidence
 archival use only `GITHUB_TOKEN`. The organization can keep its policy that prohibits Actions
 from creating or approving PRs. Release preparation does not create a PR.
 
-For installing a published release, use [Install v0.2.0](../operations/installation.md).
-Review the [upgrade support boundary](../operations/upgrading.md#v020-support-boundary)
-before preparing release notes. The bundled checks cover fresh installation,
-same-version recovery, and opposite-mode rejection; they do not qualify
-historical same-mode upgrades or full backup restoration.
+To install Orka, follow [Install v0.2.0](../operations/installation.md).
+This page is for maintainers running release checks. See
+[what v0.2.0 tests](../operations/upgrading.md#v020-support-boundary) when writing release notes.
 
 The flow is:
 

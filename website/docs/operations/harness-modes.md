@@ -9,12 +9,8 @@ independent installations. They share the Kubernetes API server and one
 platform-owned CRD schema bundle, but they do not share Tasks, Sessions,
 controller state, or execution data planes.
 
-These rules apply to installations that already enforce static controller
-identity. Stock v0.1.3 predates that contract and may watch the whole cluster.
-Follow its [retirement procedure](upgrading.md#retire-a-stock-v013-installation)
-before introducing v0.2.0, or use a separate cluster. The
-[v0.2.0 support boundary](upgrading.md#v020-support-boundary) does not advertise
-historical same-mode upgrades as qualified.
+For a new installation, use `harness-v2` and follow
+[Install v0.2.0](installation.md).
 
 ## Static mode contract
 
@@ -160,8 +156,7 @@ accepted work may lack the immutable execution authority needed for safe
 recovery. Settle or retire it, preserve its existing state, and install
 `harness-v2` as a new release and namespace. The canonical Helm and
 direct-Kustomize paths enforce this before changing workloads.
-These checks do not replace qualification of the specific source and target
-versions or verification of their SQLite layouts.
+Before upgrading, check the target release's notes for a tested upgrade procedure.
 
 ## Route new work explicitly
 

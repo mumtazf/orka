@@ -58,75 +58,23 @@ The [Glossary](reference/glossary.md) defines all of them in one place.
 - OpenSSL for generating the installation credentials and certificates.
 - An API key for at least one LLM provider (Anthropic, OpenAI, or Azure OpenAI).
 
-That covers the v0.1.3 manifest install below. Running `type: agent` coding agents
-on the newer RuntimePool path needs more — see
-[Installing from source](#option-b-current-main-from-source).
-
-For building Orka yourself, see [Development](development/development.md) for the
-toolchain versions.
+The [installation guide](operations/installation.md#before-you-start) lists the
+required tools, storage, and model connection setup.
 
 ## Install
 
-For the v0.2.0 release, follow [Install v0.2.0](operations/installation.md).
-That guide uses the published chart and image digests, with the required
-namespace, snapshot key, admission TLS, and provider-proxy setup. Its download
-commands require the release assets to have been published.
+### Option A: install v0.2.0 {#option-a-latest-release}
 
-The older v0.1.3 installation and current source build differ:
+Follow [Install v0.2.0](operations/installation.md) to download the release,
+install it with Helm, and run a test task. The download commands work once
+v0.2.0 is available on [GitHub Releases](https://github.com/orka-agents/orka/releases).
 
-| | v0.1.3 | `main` |
-| --- | --- | --- |
-| Install | Published images, no clone | Build the images yourself |
-| `type: ai` and `type: container` Tasks | Yes | Yes |
-| Chat, gateways, repository monitors, security scanning | Yes | Yes |
-| `type: agent` coding agents | Yes, via the legacy Job path | Yes, via RuntimePools |
-| Harness modes, RuntimePools, workspace providers | **No** | Yes |
+Then [connect to the API](#give-yourself-an-api-client) and run your first AI task below.
 
-Most of these docs describe `main`. v0.1.3 does run `type: agent` Tasks, but through an
-older per-Task Job and harness-wrapper path, so any page here that mentions ACP,
-RuntimePools, or harness modes does not apply to it. See [Release status](reference/release-status.md) for the full breakdown.
+### Option B: build from source {#option-b-current-main-from-source}
 
-### Option A: v0.1.3 {#option-a-latest-release}
-
-```bash
-# The manifest mounts a harness-wrapper-auth Secret but does not create it,
-# so make the namespace and that Secret first or the Pods never start.
-kubectl create namespace orka-system
-kubectl -n orka-system create secret generic harness-wrapper-auth \
-  --from-literal=token="$(openssl rand -hex 32)"
-
-kubectl apply -f https://raw.githubusercontent.com/orka-agents/orka/v0.1.3/deploy/orka.yaml
-```
-
-That installs the CRDs, RBAC, the controller, and the harness wrapper. Wait for it:
-
-```bash
-kubectl -n orka-system rollout status deploy/orka-controller-manager
-```
-
-Or with Helm:
-
-```bash
-helm repo add orka https://orka-agents.github.io/orka/charts
-helm repo update
-helm install orka orka/orka --version 0.1.3 \
-  --namespace orka-system --create-namespace
-```
-
-The v0.1.x releases published tags, images, and chart artifacts. Starting with
-v0.2.0, use [GitHub Releases](https://github.com/orka-agents/orka/releases) for
-the chart, image manifest, and qualification evidence. Follow the
-[retirement procedure](operations/upgrading.md#retire-a-stock-v013-installation)
-when moving an existing v0.1.3 installation to v0.2.0.
-
-Then continue with [Give yourself an API client](#give-yourself-an-api-client).
-
-### Option B: current `main`, from source
-
-Ordinary `main` pushes do not publish installable release images. This path
-builds them locally for development. Published releases use the separate
-[Prepare Release workflow](development/release-qualification.md), which builds
-and qualifies a generated release-branch commit before tagging it.
+Use this option to develop Orka. It builds and pushes images from your checkout.
+See [Development](development/development.md) for the toolchain versions.
 
 You will need, in addition to the prerequisites above:
 
@@ -271,20 +219,10 @@ and proxy Secrets before applying that overlay. Its controller, publisher, and r
 image variables must use the pushed `repository@sha256:...` references.
 :::
 
-### Two installs on one cluster
-
-Controller mode is fixed for the life of a static-mode installation. The
-[harness-mode isolation rules](operations/harness-modes.md) describe separate
-static v1 and v2 installations. Stock v0.1.3 predates those rules and may watch
-the whole cluster; a different namespace alone does not make it safe to run
-alongside v0.2.0. Follow [Upgrading](operations/upgrading.md#retire-a-stock-v013-installation).
-
 ### Upgrades
 
-Read the [supported upgrade paths](operations/upgrading.md#v020-support-boundary)
-before applying new CRDs or running `helm upgrade`. v0.2.0 requires a fresh
-installation when moving from v0.1.3. For a qualified same-mode upgrade, the
-CRD update is a separate step because Helm does not update CRDs on upgrade.
+Before updating Orka, read [Upgrading](operations/upgrading.md). Helm does not
+update CRDs during an upgrade, so those need a separate step.
 
 ## Give yourself an API client
 
@@ -293,22 +231,19 @@ The REST API authenticates with Kubernetes ServiceAccount tokens. A Helm release
 or Kustomize install, first [create the client ServiceAccount and its RBAC roles](operations/troubleshooting.md#i-get-403-from-the-api),
 then continue here.
 
-Forward the API port. For Option A's release manifest:
+For a Helm release named `orka`, use the same cluster connection name as your
+installation and forward the API port:
 
 ```bash
-kubectl port-forward -n orka-system svc/orka-api 8080:8080
+export ORKA_CONTEXT='<your-kubeconfig-context>'
+kubectl --context "${ORKA_CONTEXT}" -n orka-system port-forward svc/orka 8080:8080
 ```
 
-For a Helm release named `orka`, use this instead:
+In another terminal, set the same context and create a client token:
 
 ```bash
-kubectl port-forward -n orka-system svc/orka 8080:8080
-```
-
-In another terminal, create a client token:
-
-```bash
-export ORKA_TOKEN="$(kubectl -n orka-system create token orka-client)"
+export ORKA_CONTEXT='<your-kubeconfig-context>'
+export ORKA_TOKEN="$(kubectl --context "${ORKA_CONTEXT}" -n orka-system create token orka-client)"
 ```
 
 :::warning[Namespace matters]
