@@ -65,8 +65,8 @@ required tools, storage, and model connection setup.
 
 ### Option A: install a release {#option-a-latest-release}
 
-Follow [Install Orka](operations/installation.md) to choose a published release,
-install it with Helm, and run a test task.
+Follow [Install Orka](operations/installation.md) to install the latest release
+with Helm and run a test task.
 
 Then [connect to the API](#give-yourself-an-api-client) and run your first AI task below.
 

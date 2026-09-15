@@ -750,6 +750,41 @@ Key configuration values for the Helm chart:
 | `client.name` | `orka-client` | Client ServiceAccount name |
 | `client.namespace` | `""` | Client ServiceAccount namespace override. Empty defaults to `controller.watchNamespace` when namespace isolation is enforced and `watchNamespace` is set, otherwise the release namespace. |
 
+### Webhook certificate
+
+The Helm chart requires a TLS Secret for its Kubernetes admission webhooks.
+For the [installation guide](../operations/installation.md), create
+`orka-webhook-tls` in the `orka-system` namespace after creating that namespace.
+These commands use your current Kubernetes context.
+
+Use your certificate issuer to provide `tls.crt`, `tls.key`, and `ca.crt`.
+The serving certificate must be valid for `orka-webhook.orka-system.svc`.
+For a test cluster, this example creates a self-signed certificate valid for 30 days:
+
+```bash
+(
+  umask 077
+  openssl req -x509 -newkey rsa:2048 -nodes -sha256 -days 30 \
+    -keyout tls.key -out tls.crt \
+    -subj '/CN=orka-webhook.orka-system.svc' \
+    -addext 'subjectAltName=DNS:orka-webhook.orka-system.svc,DNS:orka-webhook.orka-system.svc.cluster.local' &&
+  cp tls.crt ca.crt
+)
+```
+
+The restricted file permissions protect the private key. Save the certificate
+and key in Kubernetes:
+
+```bash
+kubectl -n orka-system create secret generic orka-webhook-tls \
+  --type=kubernetes.io/tls \
+  --from-file=tls.crt=tls.crt --from-file=tls.key=tls.key --from-file=ca.crt=ca.crt
+```
+
+The installation commands read the public CA certificate from this Secret.
+Keep private keys out of Git and Helm values, and remove local private key files
+after backing them up securely. Then return to [Install with Helm](../operations/installation.md#2-install-with-helm).
+
 ### Helm authentication Secret rotation
 
 The Publisher, SCM proxy, and controller clients load these credentials at process startup. Update the Secret and bump its corresponding nonce in the same Helm upgrade: use `publisher.auth.rolloutNonce` for the publisher-auth Secret, and `scmEgressProxy.auth.rolloutNonce` for the SCM proxy-auth Secret. The publisher nonce is applied only to controller and Publisher Pod templates; the SCM nonce is applied only to Publisher and SCM proxy Pod templates. Nonces are safe revision strings, not Secret values. Coordinated rotation can briefly fail closed while Pods roll but prevents stale or split credential generations from persisting.

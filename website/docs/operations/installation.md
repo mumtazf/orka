@@ -5,8 +5,9 @@ description: "Install Orka on Kubernetes and run a test task."
 
 # Install Orka
 
-Install a published Orka release with Helm, then run a small test task.
-These steps name the installation `orka` and use the namespace `orka-system`.
+Install the latest Orka release with Helm, then run a small test task.
+These commands use your current Kubernetes context, name the installation `orka`,
+and use the namespace `orka-system`.
 For development, [build from source](../getting-started.md#option-b-current-main-from-source).
 
 ## Before you start
@@ -19,82 +20,44 @@ For development, [build from source](../getting-started.md#option-b-current-main
 - [Vekil](provider-proxy.md) running with access to your model provider.
   Orka expects it at `http://vekil.vekil-system.svc:1337`.
 
-## 1. Choose your cluster and release
-
-Run the steps in one Bash shell. Replace the two placeholders below:
-
-- `ORKA_CONTEXT`: your cluster connection name from `kubectl config get-contexts`.
-- `ORKA_VERSION`: a published [release tag](https://github.com/orka-agents/orka/releases), including the leading `v`.
-
-```bash
-set -euo pipefail
-umask 077
-
-export ORKA_CONTEXT='<your-kubeconfig-context>'
-export ORKA_VERSION='<release-tag>'
-mkdir orka-install
-cd orka-install
-
-helm repo add orka https://orka-agents.github.io/orka/charts
-helm repo update orka
-```
-
-## 2. Prepare the namespace and Secrets
+## 1. Prepare the namespace
 
 Create Orka's namespace and encryption key. The namespace label selects the
 default agent execution mode, `harness-v2`.
 
 ```bash
-kubectl --context "${ORKA_CONTEXT}" create namespace orka-system
-kubectl --context "${ORKA_CONTEXT}" label namespace orka-system orka.ai/controller-mode=harness-v2
+kubectl create namespace orka-system
+kubectl label namespace orka-system orka.ai/controller-mode=harness-v2
 
-openssl rand 32 > agent-snapshot.key
-kubectl --context "${ORKA_CONTEXT}" -n orka-system create secret generic orka-agent-snapshot-key \
-  --from-file=key=agent-snapshot.key
+openssl rand 32 | kubectl -n orka-system create secret generic orka-agent-snapshot-key \
+  --from-file=key=/dev/stdin
 ```
 
-Back up `agent-snapshot.key` securely. Orka needs the same key to read saved
-agent configuration after a restart or restore.
+Back up this Secret with your data. Orka needs the same key to read saved agent
+configuration after a restore.
 
-The webhook lets Kubernetes check Orka resources. It needs `tls.crt`, `tls.key`,
-and the issuer's certificate `ca.crt`, valid for `orka-webhook.orka-system.svc`.
-Use your certificate issuer, or create a self-signed certificate for a test cluster:
+Before continuing, complete the [webhook certificate setup](../reference/configuration.md#webhook-certificate).
+The chart currently requires this Secret for Kubernetes to validate Orka resources.
 
-```bash
-openssl req -x509 -newkey rsa:2048 -nodes -sha256 -days 30 \
-  -keyout tls.key -out tls.crt \
-  -subj '/CN=orka-webhook.orka-system.svc' \
-  -addext 'subjectAltName=DNS:orka-webhook.orka-system.svc,DNS:orka-webhook.orka-system.svc.cluster.local'
-cp tls.crt ca.crt
-```
-
-Save the certificate in Kubernetes:
-
-```bash
-kubectl --context "${ORKA_CONTEXT}" -n orka-system create secret generic orka-webhook-tls \
-  --type=kubernetes.io/tls \
-  --from-file=tls.crt=tls.crt --from-file=tls.key=tls.key --from-file=ca.crt=ca.crt
-```
-
-Keep private keys out of Git and Helm values. Orka creates its other internal
-Secrets automatically; model credentials stay in Vekil.
-
-## 3. Install with Helm
+## 2. Install with Helm
 
 Expand the block below and run it to create `release-values.json`, the Helm
-settings file. It selects the matching release images automatically and refers
-to the Secrets you created. You do not need to edit the block.
+settings file. It downloads the latest release's image settings automatically.
+You do not need to edit the block.
 
 <details>
 <summary>Generate the Helm settings file</summary>
 
 ```bash
-curl --fail --location \
-  "https://github.com/orka-agents/orka/releases/download/${ORKA_VERSION}/candidate.json" |
-jq -e --arg version "${ORKA_VERSION}" --arg ca "$(openssl base64 -A -in ca.crt)" '
+curl --fail --location --output candidate.json \
+  https://github.com/orka-agents/orka/releases/latest/download/candidate.json &&
+jq -e --arg ca "$(kubectl -n orka-system get secret orka-webhook-tls -o jsonpath='{.data.ca\.crt}')" '
   def image: split("@") | {repository: .[0], digest: .[1]};
-  if .schemaVersion != 1 or .repository != "orka-agents/orka" or .version != $version
-  then error("release metadata does not match the selected version") else .images end |
+  if .schemaVersion != 1 or .repository != "orka-agents/orka"
+    or (.version | test("^v[0-9]+[.][0-9]+[.][0-9]+$") | not)
+  then error("invalid release metadata")
+  elif $ca == "" then error("complete the webhook certificate setup first")
+  else .images end |
   {
     controller: {
       mode: "harness-v2",
@@ -118,7 +81,7 @@ jq -e --arg version "${ORKA_VERSION}" --arg ca "$(openssl base64 -A -in ca.crt)"
     store: {persistence: {enabled: true}},
     webhooks: {tls: {existingSecret: "orka-webhook-tls"}, caBundle: $ca}
   }
-' > release-values.json
+' candidate.json > release-values.json
 ```
 
 </details>
@@ -126,24 +89,26 @@ jq -e --arg version "${ORKA_VERSION}" --arg ca "$(openssl base64 -A -in ca.crt)"
 Install the chart from Orka's Helm repository:
 
 ```bash
-helm install orka orka/orka --version "${ORKA_VERSION#v}" \
-  --kube-context "${ORKA_CONTEXT}" --namespace orka-system \
+helm repo add orka https://orka-agents.github.io/orka/charts
+helm repo update orka
+helm install orka orka/orka --namespace orka-system \
+  --version "$(jq -er '.version | ltrimstr("v")' candidate.json)" \
   --values release-values.json --wait --timeout 10m
 ```
 
-Keep `release-values.json` with your installation records.
-See [Release files](../reference/release-status.md#release-files) for details
-about the image settings.
+The chart version is read automatically to match the downloaded image settings.
+Keep `release-values.json` with your installation records. See
+[Release files](../reference/release-status.md#release-files) for details.
 
-## 4. Check the installation
+## 3. Check the installation
 
 Check that the deployments are ready and the data volumes show `Bound`,
 then run a container task. This test does not call a model.
 
 ```bash
-kubectl --context "${ORKA_CONTEXT}" -n orka-system get deployments,pvc
+kubectl -n orka-system get deployments,pvc
 
-kubectl --context "${ORKA_CONTEXT}" -n orka-system create -f - <<'YAML'
+kubectl -n orka-system create -f - <<'YAML'
 apiVersion: core.orka.ai/v1alpha1
 kind: Task
 metadata:
@@ -156,7 +121,7 @@ spec:
     maxRetries: 0
 YAML
 
-kubectl --context "${ORKA_CONTEXT}" -n orka-system wait \
+kubectl -n orka-system wait \
   --for=jsonpath='{.status.phase}'=Succeeded task/release-install-check --timeout=3m
 ```
 
