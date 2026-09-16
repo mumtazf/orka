@@ -4,7 +4,6 @@ set -Eeuo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 profile="${1:-cover.out}"
 details="${2:-coverage-functions.txt}"
-summary_report="${3:-coverage-summary.md}"
 : "${TEST_OUTCOME:?TEST_OUTCOME must be set}"
 : "${GITHUB_STEP_SUMMARY:?GITHUB_STEP_SUMMARY must be set}"
 
@@ -71,5 +70,4 @@ render_summary() {
   printf '</details>\n'
 }
 
-render_summary > "${summary_report}"
-cat "${summary_report}" >> "${GITHUB_STEP_SUMMARY}"
+render_summary >> "${GITHUB_STEP_SUMMARY}"
