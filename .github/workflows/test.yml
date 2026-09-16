@@ -48,7 +48,7 @@ jobs:
           done
 
   test:
-    name: Go test and coverage
+    name: Go Tests
     runs-on: ubuntu-latest
     steps:
       - name: Clone the code
