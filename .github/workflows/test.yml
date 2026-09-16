@@ -76,11 +76,12 @@ jobs:
         run: bash scripts/go-coverage-summary.sh
 
       - name: Upload Go coverage evidence
-        if: ${{ always() && hashFiles('cover.out') != '' }}
+        if: ${{ always() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: go-coverage-evidence
           path: |
+            coverage-summary.md
             cover.out
             coverage-functions.txt
 

@@ -4,6 +4,7 @@ set -Eeuo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 profile="${1:-cover.out}"
 details="${2:-coverage-functions.txt}"
+summary_report="${3:-coverage-summary.md}"
 : "${TEST_OUTCOME:?TEST_OUTCOME must be set}"
 : "${GITHUB_STEP_SUMMARY:?GITHUB_STEP_SUMMARY must be set}"
 
@@ -46,8 +47,9 @@ if [[ -n "${GITHUB_SERVER_URL:-}" && -n "${GITHUB_REPOSITORY:-}" && -n "${GITHUB
   artifact_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}#artifacts"
 fi
 
-{
-  printf '## Results\n\n'
+render_summary() {
+  printf '## Results for Go Tests\n\n'
+  printf 'This report shows whether the Go tests passed and how much Go code they covered.\n\n'
   printf -- '- **Test result:** %s\n' "${test_status}"
   printf -- '- **Coverage profile:** %s\n' "${coverage_status}"
   if [[ -n "${total}" ]]; then
@@ -56,7 +58,7 @@ fi
   printf -- '- **Commit:** %s\n' "${commit_display}"
   printf -- '- **Scope:** `make test`, excluding E2E packages\n'
   if [[ "${TEST_OUTCOME}" != success ]]; then
-    printf '\nAny available report is **incomplete diagnostic output**, not an accepted baseline, because the Go test step did not succeed.\n'
+    printf "\nThis run didn't pass, so any coverage shown may be incomplete. Use it to debug the issue, **not as a coverage baseline**.\n"
   fi
   printf '\n<details>\n<summary>How is coverage calculated?</summary>\n\n'
   printf '`make test` runs the non-E2E Go packages with `go test -coverprofile cover.out`. '
@@ -67,4 +69,7 @@ fi
     printf 'The coverage artifact contains the raw profile and function-by-function breakdown.\n\n'
   fi
   printf '</details>\n'
-} >> "${GITHUB_STEP_SUMMARY}"
+}
+
+render_summary > "${summary_report}"
+cat "${summary_report}" >> "${GITHUB_STEP_SUMMARY}"
