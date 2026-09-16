@@ -68,14 +68,20 @@ printf 'not a Go coverage profile\n' > "${fixture_dir}/invalid.out"
 for outcome in success failure skipped cancelled error; do
   for profile_case in valid missing empty header-only invalid; do
     summary="${fixture_dir}/${profile_case}-${outcome}.md"
+    summary_report="${fixture_dir}/${profile_case}-${outcome}-report.md"
     details="${fixture_dir}/${profile_case}-${outcome}.txt"
     (
       cd "${fixture_dir}"
       TEST_OUTCOME="${outcome}" GITHUB_STEP_SUMMARY="${summary}" \
         GITHUB_SERVER_URL=https://github.example GITHUB_REPOSITORY=example/orka GITHUB_RUN_ID=1234 \
-        bash "${root}/scripts/go-coverage-summary.sh" "${fixture_dir}/${profile_case}.out" "${details}"
+        bash "${root}/scripts/go-coverage-summary.sh" "${fixture_dir}/${profile_case}.out" "${details}" "${summary_report}"
     )
 
+    assert_file_exists "${summary_report}"
+    if ! cmp -s "${summary}" "${summary_report}"; then
+      printf 'FAIL: job summary and report differ for %s / %s\n' "${profile_case}" "${outcome}" >&2
+      exit 1
+    fi
     assert_contains "${summary}" '## Results'
     assert_not_contains "${summary}" 'Go Test Coverage'
     assert_not_contains "${summary}" 'Go test outcome:'

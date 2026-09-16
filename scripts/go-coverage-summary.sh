@@ -4,6 +4,7 @@ set -Eeuo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 profile="${1:-cover.out}"
 details="${2:-coverage-functions.txt}"
+summary_report="${3:-coverage-summary.md}"
 : "${TEST_OUTCOME:?TEST_OUTCOME must be set}"
 : "${GITHUB_STEP_SUMMARY:?GITHUB_STEP_SUMMARY must be set}"
 
@@ -46,7 +47,7 @@ if [[ -n "${GITHUB_SERVER_URL:-}" && -n "${GITHUB_REPOSITORY:-}" && -n "${GITHUB
   artifact_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}#artifacts"
 fi
 
-{
+render_summary() {
   printf '## Results\n\n'
   printf -- '- **Test result:** %s\n' "${test_status}"
   printf -- '- **Coverage profile:** %s\n' "${coverage_status}"
@@ -67,4 +68,7 @@ fi
     printf 'The coverage artifact contains the raw profile and function-by-function breakdown.\n\n'
   fi
   printf '</details>\n'
-} >> "${GITHUB_STEP_SUMMARY}"
+}
+
+render_summary > "${summary_report}"
+cat "${summary_report}" >> "${GITHUB_STEP_SUMMARY}"
