@@ -248,7 +248,6 @@ func validateDisabledSubstrateRecoveryConfig(
 func main() {
 	acpUpgradeDrainOptions := controller.DefaultACPUpgradeDrainOptions()
 	var metricsAddr string
-	var metricsCertPath, metricsCertName, metricsCertKey string
 	var webhookCertPath, webhookCertName, webhookCertKey string
 	var webhookCertRotationSecret, webhookCertRotationWebhook, webhookCertRotationDNSName string
 	var taskProvenanceAdmissionEnabled bool
@@ -435,10 +434,6 @@ func main() {
 		os.Getenv("ORKA_TASK_PROVENANCE_ADMISSION_TRUSTED_SERVICE_ACCOUNTS"),
 		"Comma-separated ServiceAccount names trusted in the target Task namespace to set "+
 			"Orka-managed Task provenance fields. Defaults to the configured AI and vendor worker ServiceAccounts.")
-	flag.StringVar(&metricsCertPath, "metrics-cert-path", "",
-		"The directory that contains the metrics server certificate.")
-	flag.StringVar(&metricsCertName, "metrics-cert-name", "tls.crt", "The name of the metrics server certificate file.")
-	flag.StringVar(&metricsCertKey, "metrics-cert-key", "tls.key", "The name of the metrics server key file.")
 	flag.BoolVar(&enableHTTP2, "enable-http2", false,
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
 	flag.IntVar(&apiPort, "api-port", 8080, "The port the REST API server binds to.")
@@ -1090,15 +1085,6 @@ func main() {
 
 	if secureMetrics {
 		metricsServerOptions.FilterProvider = filters.WithAuthenticationAndAuthorization
-	}
-
-	if len(metricsCertPath) > 0 {
-		setupLog.Info("Initializing metrics certificate watcher using provided certificates",
-			"metrics-cert-path", metricsCertPath, "metrics-cert-name", metricsCertName, "metrics-cert-key", metricsCertKey)
-
-		metricsServerOptions.CertDir = metricsCertPath
-		metricsServerOptions.CertName = metricsCertName
-		metricsServerOptions.KeyName = metricsCertKey
 	}
 
 	processCtx, stopProcess := context.WithCancel(ctrl.SetupSignalHandler())

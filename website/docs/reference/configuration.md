@@ -1060,6 +1060,7 @@ See [charts/orka/values.yaml](https://github.com/orka-agents/orka/blob/main/char
 | `--context-token-provider-use-scopes` | `ORKA_CONTEXT_TOKEN_PROVIDER_USE_SCOPES` env or `""` | Comma-separated scopes authorizing chat/OpenAI/Anthropic model-provider use and model listing. Defaults to `orka:providers:use` |
 | `--context-token-secret-read-scopes` | `ORKA_CONTEXT_TOKEN_SECRET_READ_SCOPES` env or `""` | Comma-separated scopes authorizing Secret metadata reads. Defaults to `orka:secrets:read` |
 | `--context-token-secret-credential-read-scopes` | `ORKA_CONTEXT_TOKEN_SECRET_CREDENTIAL_READ_SCOPES` env or `""` | Comma-separated scopes authorizing Secret data or ServiceAccount tokens as outbound credentials. Defaults to `orka:secrets:credentials:read` |
+| `--context-token-configmap-read-scopes` | `ORKA_CONTEXT_TOKEN_CONFIGMAP_READ_SCOPES` env or `""` | Comma-separated scopes authorizing ConfigMap reads used as operation inputs. Defaults to `orka:configmaps:read` |
 | `--context-token-agent-read-scopes` | `ORKA_CONTEXT_TOKEN_AGENT_READ_SCOPES` env or `""` | Comma-separated scopes authorizing Agent reads. Defaults to `orka:agents:read` |
 | `--context-token-agent-write-scopes` | `ORKA_CONTEXT_TOKEN_AGENT_WRITE_SCOPES` env or `""` | Comma-separated scopes authorizing Agent writes. Defaults to `orka:agents:write` |
 | `--context-token-memory-read-scopes` | `ORKA_CONTEXT_TOKEN_MEMORY_READ_SCOPES` env or `""` | Comma-separated scopes authorizing memory reads. Defaults to `orka:memory:read` |
@@ -1100,6 +1101,7 @@ See [charts/orka/values.yaml](https://github.com/orka-agents/orka/blob/main/char
 | `--acp-claude-runtime-image` / `ORKA_ACP_CLAUDE_RUNTIME_IMAGE` | unset | Claude runtime image with an explicit tag or SHA256 digest. Tags are resolved at startup. |
 | `--acp-copilot-runtime-image` / `ORKA_ACP_COPILOT_RUNTIME_IMAGE` | unset | GitHub Copilot runtime image with an explicit tag or SHA256 digest. Tags are resolved at startup. |
 | `--acp-opencode-runtime-image` / `ORKA_ACP_OPENCODE_RUNTIME_IMAGE` | unset | OpenCode runtime image with an explicit tag or SHA256 digest. Tags are resolved at startup. |
+| `--acp-idle-pool-ttl` / `ORKA_ACP_IDLE_POOL_TTL` | `15m` | Scale an idle ACP RuntimePool to zero after this duration. |
 | `--general-worker-image` | `ghcr.io/orka-agents/orka/general-worker:latest` | General worker container image |
 | `--store-backend` | `sqlite` | Payload/read-model backend. ACP control authority remains Kubernetes CRDs and Leases. |
 | `--store-path` | `/data/orka.db` | Path to the SQLite transcript/outbox/artifact database file. |
@@ -1115,6 +1117,7 @@ See [charts/orka/values.yaml](https://github.com/orka-agents/orka/blob/main/char
 | `--chat-max-concurrent` | `10` | Max concurrent chat sessions |
 | `--chat-max-tasks-per-turn` | `5` | Max tasks created per chat turn |
 | `--chat-max-session-size` | `512000` | Soft limit for session size before truncation (bytes) |
+| `--chat-max-premature-end-retries` | `3` | Number of times to ask the coordinator model to continue when it stops without the `GOAL_STATE` completion marker |
 | `--leader-elect` | `false` | Enable leader election. Static controller installations require `true`; the Lease is stored in the watched namespace. |
 | `--metrics-bind-address` | `0` | Metrics endpoint address |
 | `--health-probe-bind-address` | `:8081` | Health probe address |
