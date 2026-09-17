@@ -1989,8 +1989,8 @@ func jobFailedDueToActiveDeadline(job *batchv1.Job) bool {
 // An OOM kill outranks the worker's own report because the worker is SIGKILLed
 // before it can describe it, and raising the memory limit is the actionable fix.
 //
-// Pod listing failures are non-fatal — we fall back to the generic message
-// rather than block task completion.
+// Pod listing failures are non-fatal — the remaining signals still apply rather
+// than blocking task completion.
 func (r *TaskReconciler) diagnoseFailedJob(ctx context.Context, task *corev1alpha1.Task) string {
 	log := logf.FromContext(ctx)
 
@@ -2090,11 +2090,27 @@ func (r *TaskReconciler) workerReportedFailureDetail(ctx context.Context, task *
 	// Events are listed in ascending sequence order, so the retried Task's
 	// final attempt reports last.
 	for _, event := range slices.Backward(listed) {
+		if !workerFailureEventInCurrentAttempt(task, event) {
+			// Older attempts have their own recorded cause; reporting one of
+			// them for this attempt would misattribute the failure.
+			break
+		}
 		if detail := workerFailureDetail(event.Summary); detail != "" {
 			return detail
 		}
 	}
 	return ""
+}
+
+// workerFailureEventInCurrentAttempt reports whether event was recorded during
+// the Task's current attempt. StartTime is reset every time the controller
+// creates an attempt's Job, and a worker can only report after its Pod starts,
+// so an earlier timestamp belongs to a previous attempt.
+func workerFailureEventInCurrentAttempt(task *corev1alpha1.Task, event store.ExecutionEvent) bool {
+	if task.Status.StartTime == nil || task.Status.StartTime.IsZero() || event.CreatedAt.IsZero() {
+		return true
+	}
+	return !event.CreatedAt.Before(task.Status.StartTime.Time)
 }
 
 // workerFailureDetail sanitizes a worker-supplied failure summary for Task

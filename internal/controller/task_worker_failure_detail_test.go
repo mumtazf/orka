@@ -11,6 +11,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 	"unicode/utf8"
 
 	corev1 "k8s.io/api/core/v1"
@@ -67,6 +68,13 @@ func terminatedWorkerPod(task *corev1alpha1.Task, exitCode int32, reason string)
 
 func appendWorkerFailedEvent(t *testing.T, r *TaskReconciler, task *corev1alpha1.Task, summary string) {
 	t.Helper()
+	appendWorkerFailedEventAt(t, r, task, summary, time.Time{})
+}
+
+func appendWorkerFailedEventAt(
+	t *testing.T, r *TaskReconciler, task *corev1alpha1.Task, summary string, createdAt time.Time,
+) {
+	t.Helper()
 	if _, err := r.ExecutionEventStore.AppendExecutionEvent(context.Background(), &store.ExecutionEvent{
 		Namespace:  task.Namespace,
 		StreamType: store.ExecutionEventStreamTypeTask,
@@ -75,6 +83,7 @@ func appendWorkerFailedEvent(t *testing.T, r *TaskReconciler, task *corev1alpha1
 		Type:       execevents.ExecutionEventTypeWorkerFailed,
 		Severity:   execevents.ExecutionEventSeverityError,
 		Summary:    summary,
+		CreatedAt:  createdAt,
 	}); err != nil {
 		t.Fatalf("AppendExecutionEvent() error = %v", err)
 	}
@@ -201,6 +210,37 @@ func TestDiagnoseFailedJobToleratesMissingEventStore(t *testing.T) {
 
 	got := r.diagnoseFailedJob(context.Background(), task)
 	want := "job failed: container exited with code 1 (reason=Error)"
+	if got != want {
+		t.Fatalf("diagnoseFailedJob() = %q, want %q", got, want)
+	}
+}
+
+func TestDiagnoseFailedJobIgnoresPreviousAttemptWorkerReport(t *testing.T) {
+	task := workerFailureTask("stale-report")
+	startedAt := metav1.NewTime(time.Now())
+	task.Status.StartTime = &startedAt
+	task.Status.Attempts = 2
+	r := newUnitReconciler(newTestScheme(), task, terminatedWorkerPod(task, 1, "Error"))
+	appendWorkerFailedEventAt(t, r, task, workerUpstreamSummary, startedAt.Add(-5*time.Minute))
+
+	got := r.diagnoseFailedJob(context.Background(), task)
+	want := "job failed: container exited with code 1 (reason=Error)"
+	if got != want {
+		t.Fatalf("diagnoseFailedJob() = %q, want the previous attempt's report ignored (%q)", got, want)
+	}
+}
+
+func TestDiagnoseFailedJobUsesCurrentAttemptWorkerReport(t *testing.T) {
+	task := workerFailureTask("current-report")
+	startedAt := metav1.NewTime(time.Now())
+	task.Status.StartTime = &startedAt
+	task.Status.Attempts = 2
+	r := newUnitReconciler(newTestScheme(), task, terminatedWorkerPod(task, 1, "Error"))
+	appendWorkerFailedEventAt(t, r, task, "first attempt failed", startedAt.Add(-5*time.Minute))
+	appendWorkerFailedEventAt(t, r, task, workerUpstreamSummary, startedAt.Add(time.Second))
+
+	got := r.diagnoseFailedJob(context.Background(), task)
+	want := "job failed: " + workerUpstreamSummary
 	if got != want {
 		t.Fatalf("diagnoseFailedJob() = %q, want %q", got, want)
 	}
