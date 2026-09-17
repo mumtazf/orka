@@ -2089,8 +2089,8 @@ func (r *TaskReconciler) workerReportedFailureDetail(ctx context.Context, task *
 	}
 	// Events are listed in ascending sequence order, so the retried Task's
 	// final attempt reports last.
-	for i := len(listed) - 1; i >= 0; i-- {
-		if detail := workerFailureDetail(listed[i].Summary); detail != "" {
+	for _, event := range slices.Backward(listed) {
+		if detail := workerFailureDetail(event.Summary); detail != "" {
 			return detail
 		}
 	}
